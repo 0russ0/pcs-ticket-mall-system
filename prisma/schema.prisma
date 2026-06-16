@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StaffRole {
+  admin
+  teacher
+}
+
+enum OrderStatus {
+  pending
+  approved
+  completed
+  cancelled
+}
+
+enum ProductCategory {
+  physical_item
+  experience
+  privilege
+}
+
+enum LeaderboardType {
+  school_wide
+  homeroom
+  team
+}
+
+model School {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  students        Student[]
+  staff           Staff[]
+  pointCategories PointCategory[]
+  pointAwards     PointAward[]
+  products        Product[]
+  orders          Order[]
+  leaderboardCache LeaderboardCache[]
+  adminSettings   AdminSetting[]
+
+  @@map("schools")
+}
+
+model Student {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int      @map("school_id")
+  externalId  String?  @map("external_id") @db.VarChar(50)
+  googleEmail String?  @unique @map("google_email") @db.VarChar(255)
+  firstName   String   @map("first_name") @db.VarChar(100)
+  lastName    String   @map("last_name") @db.VarChar(100)
+  grade       String   @db.VarChar(2)
+  homeroom    String   @db.VarChar(100)
+  team        String   @db.VarChar(100)
+  totalPoints Int      @default(0) @map("total_points")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  school      School      @relation(fields: [schoolId], references: [id])
+  pointAwards PointAward[]
+  orders      Order[]
+  leaderboardCache LeaderboardCache[]
+
+  @@unique([schoolId, externalId])
+  @@index([schoolId, totalPoints])
+  @@map("students")
+}
+
+model Staff {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int      @map("school_id")
+  googleEmail String   @unique @map("google_email") @db.VarChar(255)
+  firstName   String?  @map("first_name") @db.VarChar(100)
+  lastName    String?  @map("last_name") @db.VarChar(100)
+  role        StaffRole @default(teacher)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  school          School       @relation(fields: [schoolId], references: [id])
+  pointAwards     PointAward[]
+  approvedOrders  Order[] @relation("ApprovedBy")
+  completedOrders Order[] @relation("CompletedBy")
+
+  @@map("staff")
+}
+
+model PointCategory {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int      @map("school_id")
+  name        String   @db.VarChar(100)
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  school      School       @relation(fields: [schoolId], references: [id])
+  pointAwards PointAward[]
+
+  @@unique([schoolId, name])
+  @@map("point_categories")
+}
+
+model PointAward {
+  id         Int      @id @default(autoincrement())
+  schoolId   Int      @map("school_id")
+  studentId  Int      @map("student_id")
+  staffId    Int      @map("staff_id")
+  categoryId Int      @map("category_id")
+  points     Int
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  school   School        @relation(fields: [schoolId], references: [id])
+  student  Student       @relation(fields: [studentId], references: [id])
+  staff    Staff         @relation(fields: [staffId], references: [id])
+  category PointCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([studentId])
+  @@map("point_awards")
+}
+
+model Product {
+  id                  Int      @id @default(autoincrement())
+  schoolId            Int      @map("school_id")
+  name                String   @db.VarChar(200)
+  description         String?
+  pointsCost          Int      @map("points_cost")
+  category            ProductCategory
+  inventoryLimit      Int?     @map("inventory_limit")
+  inventoryAvailable  Int?     @map("inventory_available")
+  imageUrl            String?  @map("image_url") @db.VarChar(500)
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  school     School      @relation(fields: [schoolId], references: [id])
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  schoolId     Int         @map("school_id")
+  studentId    Int         @map("student_id")
+  status       OrderStatus @default(pending)
+  totalPoints  Int         @map("total_points")
+  submittedAt  DateTime    @default(now()) @map("submitted_at")
+  approvedAt   DateTime?   @map("approved_at")
+  approvedBy   Int?        @map("approved_by")
+  completedAt  DateTime?   @map("completed_at")
+  completedBy  Int?        @map("completed_by")
+  notes        String?
+
+  school        School      @relation(fields: [schoolId], references: [id])
+  student       Student     @relation(fields: [studentId], references: [id])
+  approvedStaff Staff?      @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  completedStaff Staff?     @relation("CompletedBy", fields: [completedBy], references: [id])
+  items         OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id            Int @id @default(autoincrement())
+  orderId       Int @map("order_id")
+  productId     Int @map("product_id")
+  quantity      Int
+  pointsPerItem Int @map("points_per_item")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model LeaderboardCache {
+  id              Int              @id @default(autoincrement())
+  schoolId        Int              @map("school_id")
+  leaderboardType LeaderboardType  @map("leaderboard_type")
+  grouping        String?          @db.VarChar(100)
+  studentId       Int              @map("student_id")
+  rank            Int
+  totalPoints     Int              @map("total_points")
+  cachedAt        DateTime         @default(now()) @map("cached_at")
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([schoolId, leaderboardType, grouping, studentId])
+  @@map("leaderboard_cache")
+}
+
+model AdminSetting {
+  id           Int    @id @default(autoincrement())
+  schoolId     Int    @map("school_id")
+  settingKey   String @map("setting_key") @db.VarChar(100)
+  settingValue String? @map("setting_value")
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, settingKey])
+  @@map("admin_settings")
+}

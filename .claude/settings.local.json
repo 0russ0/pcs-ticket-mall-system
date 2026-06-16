@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-eslint --src-dir=false --import-alias \"@/*\" --use-npm)",
+      "Bash(npx create-next-app@latest temp-app --typescript --tailwind --app --no-eslint --src-dir=false --import-alias \"@/*\" --use-npm)",
+      "Bash(npm install *)",
+      "Bash(wait)",
+      "Bash(cp -r temp-app/.[!.]* temp-app/* .)",
+      "Bash(rm -rf temp-app)",
+      "Bash(cp temp-app/package.json temp-app/package-lock.json temp-app/.gitignore temp-app/eslint.config.mjs .)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(node -e \"console.log\\(process.platform, process.arch\\)\")",
+      "Bash(npm ls *)"
+    ]
+  }
+}
