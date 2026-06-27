@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Student = {
   id: number;
@@ -27,6 +27,18 @@ export default function AwardPointsForm() {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetch("/api/students").then((r) => r.json()).then(setStudents);
@@ -37,14 +49,20 @@ export default function AwardPointsForm() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return students;
+    if (!search) return students.slice(0, 8);
     const q = search.toLowerCase();
-    return students.filter((s) =>
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(q)
-    );
+    return students
+      .filter((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(q))
+      .slice(0, 8);
   }, [students, search]);
 
   const selectedStudent = students.find((s) => s.id === studentId);
+
+  function handleSelectStudent(s: Student) {
+    setStudentId(s.id);
+    setSearch(`${s.firstName} ${s.lastName}`);
+    setDropdownOpen(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +116,7 @@ export default function AwardPointsForm() {
         </div>
       )}
 
-      <div>
+      <div ref={containerRef} className="relative">
         <label className="block text-sm font-medium mb-1" htmlFor="student-search">
           Student
         </label>
@@ -106,26 +124,44 @@ export default function AwardPointsForm() {
           id="student-search"
           className="input"
           type="text"
-          placeholder="Search by name..."
+          autoComplete="off"
+          placeholder="Start typing a name..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="input mt-2"
-          value={studentId}
-          onChange={(e) => setStudentId(e.target.value ? Number(e.target.value) : "")}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setStudentId("");
+            setDropdownOpen(true);
+          }}
+          onFocus={() => setDropdownOpen(true)}
           required
-        >
-          <option value="">Select a student...</option>
-          {filtered.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.firstName} {s.lastName} ({s.grade} - {s.homeroom})
-            </option>
-          ))}
-        </select>
+        />
+        {dropdownOpen && filtered.length > 0 && (
+          <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto">
+            {filtered.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => handleSelectStudent(s)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex justify-between items-center"
+                >
+                  <span>
+                    {s.firstName} {s.lastName}{" "}
+                    <span className="text-gray-400">({s.grade} - {s.homeroom})</span>
+                  </span>
+                  <span className="text-gray-500 text-xs">{s.totalPoints} pts</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {dropdownOpen && search && filtered.length === 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg px-3 py-2 text-sm text-gray-500">
+            No students match &quot;{search}&quot;
+          </div>
+        )}
         {selectedStudent && (
           <p className="text-sm text-gray-500 mt-1">
-            Current points: {selectedStudent.totalPoints}
+            Selected: {selectedStudent.firstName} {selectedStudent.lastName} &middot; Current points: {selectedStudent.totalPoints}
           </p>
         )}
       </div>
