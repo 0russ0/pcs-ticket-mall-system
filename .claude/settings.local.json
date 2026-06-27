@@ -12,7 +12,12 @@
       "Bash(npx tsc *)",
       "Bash(npm run *)",
       "Bash(node -e \"console.log\\(process.platform, process.arch\\)\")",
-      "Bash(npm ls *)"
+      "Bash(npm ls *)",
+      "Bash(grep -E \"^\\\\.env$\")",
+      "Bash(npx vercel *)",
+      "Bash(node check.mjs)",
+      "Bash(node check.mjs 2ndtest@providentcharterschool.org teacher)",
+      "Bash(git add *)"
     ]
   }
 }

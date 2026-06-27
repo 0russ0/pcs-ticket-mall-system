@@ -31,7 +31,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default function StoreClient({ studentPoints }: { studentPoints: number | null }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<string>("all");
-  const { addItem, count } = useCart();
+  const { addItem, count, total } = useCart();
   const [added, setAdded] = useState<number | null>(null);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function StoreClient({ studentPoints }: { studentPoints: number |
   }
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${count > 0 ? "pb-20" : ""}`}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">School Store</h1>
         <Link href="/store/cart" className="btn btn-primary">
@@ -112,6 +112,20 @@ export default function StoreClient({ studentPoints }: { studentPoints: number |
       </div>
 
       {filtered.length === 0 && <p className="text-gray-500">No items available yet.</p>}
+
+      {count > 0 && (
+        <div className="fixed bottom-14 md:bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-gray-500">{count} item{count > 1 ? "s" : ""} in cart</p>
+              <p className="font-bold text-lg text-blue-600">{total} pts</p>
+            </div>
+            <Link href="/store/cart" className="btn btn-primary">
+              View Cart
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

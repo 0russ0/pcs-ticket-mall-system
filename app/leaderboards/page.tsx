@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { TEAM_COLORS, getTeamSummaries } from "@/lib/leaderboard";
 import Link from "next/link";
+import HomeroomSelect from "./HomeroomSelect";
 
 type SearchParams = { type?: string; homeroom?: string };
 
@@ -128,16 +129,7 @@ async function Homeroom({
 
   return (
     <div className="space-y-3">
-      <form>
-        <input type="hidden" name="type" value="homeroom" />
-        <select name="homeroom" defaultValue={selected} className="input" onChange={(e) => e.target.form?.submit()}>
-          {homerooms.map((h) => (
-            <option key={h.homeroom} value={h.homeroom}>
-              {h.homeroom}
-            </option>
-          ))}
-        </select>
-      </form>
+      <HomeroomSelect homerooms={homerooms.map((h) => h.homeroom)} selected={selected} />
       <div className="space-y-2">
         {rows.map((row) => (
           <LeaderboardCard
