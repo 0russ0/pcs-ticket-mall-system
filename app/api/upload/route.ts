@@ -16,10 +16,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "File storage is not configured" }, { status: 500 });
   }
 
-  const blob = await put(`products/${Date.now()}-${file.name}`, file, {
-    access: "public",
-    addRandomSuffix: true,
-  });
+  try {
+    const blob = await put(`products/${Date.now()}-${file.name}`, file, {
+      access: "public",
+      addRandomSuffix: true,
+    });
 
-  return NextResponse.json({ url: blob.url, filename: file.name });
+    return NextResponse.json({ url: blob.url, filename: file.name });
+  } catch (err) {
+    console.error("Blob upload failed:", err);
+    const message = err instanceof Error ? err.message : "Unknown upload error";
+    return NextResponse.json({ error: `Upload failed: ${message}` }, { status: 500 });
+  }
 }
