@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/components/CartContext";
+import { proxiedImageUrl } from "@/lib/image";
 
 type Product = {
   id: number;
@@ -89,7 +90,7 @@ export default function StoreClient({ studentPoints }: { studentPoints: number |
               <div className="w-full aspect-square bg-gray-100 rounded-md mb-2 flex items-center justify-center overflow-hidden">
                 {p.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.imageUrl} alt={p.name} className="object-cover w-full h-full" />
+                  <img src={proxiedImageUrl(p.imageUrl)!} alt={p.name} className="object-cover w-full h-full" />
                 ) : (
                   <span className="text-3xl">🎁</span>
                 )}

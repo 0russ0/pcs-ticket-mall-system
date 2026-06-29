@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartContext";
+import { proxiedImageUrl } from "@/lib/image";
 
 export default function CartPage() {
   const { items, removeItem, setQuantity, total, clear } = useCart();
@@ -53,7 +54,7 @@ export default function CartPage() {
                 <div className="w-14 h-14 bg-gray-100 rounded-md flex items-center justify-center overflow-hidden shrink-0">
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.imageUrl} alt={item.name} className="object-cover w-full h-full" />
+                    <img src={proxiedImageUrl(item.imageUrl)!} alt={item.name} className="object-cover w-full h-full" />
                   ) : (
                     <span className="text-xl">🎁</span>
                   )}

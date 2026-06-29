@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   try {
     const blob = await put(`products/${Date.now()}-${file.name}`, file, {
-      access: "public",
+      access: "private",
       addRandomSuffix: true,
     });
 

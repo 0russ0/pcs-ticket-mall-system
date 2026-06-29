@@ -19,7 +19,8 @@
       "Bash(node check.mjs 2ndtest@providentcharterschool.org teacher)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(npm view *)"
     ]
   }
 }

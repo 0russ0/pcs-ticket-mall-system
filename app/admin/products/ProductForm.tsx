@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { proxiedImageUrl } from "@/lib/image";
 
 type Product = {
   id?: number;
@@ -149,7 +150,7 @@ export default function ProductForm({ product }: { product?: Product }) {
         {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
         {imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="Preview" className="mt-2 w-24 h-24 object-cover rounded-md" />
+          <img src={proxiedImageUrl(imageUrl)!} alt="Preview" className="mt-2 w-24 h-24 object-cover rounded-md" />
         )}
       </div>
 
