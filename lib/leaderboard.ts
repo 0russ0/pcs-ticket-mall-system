@@ -85,6 +85,28 @@ export async function refreshLeaderboard(schoolId: number) {
   }
 }
 
+export async function getHomeroomSummaries(schoolId: number) {
+  const students = await prisma.student.findMany({
+    where: { schoolId },
+    select: { homeroom: true, totalPoints: true },
+  });
+
+  const homerooms = Array.from(new Set(students.map((s) => s.homeroom))).sort();
+
+  return homerooms
+    .map((homeroom) => {
+      const members = students.filter((s) => s.homeroom === homeroom);
+      const total = members.reduce((sum, s) => sum + s.totalPoints, 0);
+      return {
+        homeroom,
+        totalPoints: total,
+        memberCount: members.length,
+        avgPoints: members.length > 0 ? Math.round(total / members.length) : 0,
+      };
+    })
+    .sort((a, b) => b.totalPoints - a.totalPoints);
+}
+
 export async function getTeamSummaries(schoolId: number) {
   const students = await prisma.student.findMany({
     where: { schoolId },

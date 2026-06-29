@@ -11,6 +11,7 @@ export default function HomeroomSelect({ homerooms, selected }: { homerooms: str
       defaultValue={selected}
       onChange={(e) => router.push(`/leaderboards?type=homeroom&homeroom=${encodeURIComponent(e.target.value)}`)}
     >
+      <option value="__all__">⭐ PCS Homeroom Leaderboard (all homerooms)</option>
       {homerooms.map((h) => (
         <option key={h} value={h}>
           {h}

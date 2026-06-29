@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { TEAM_COLORS, getTeamSummaries } from "@/lib/leaderboard";
+import { TEAM_COLORS, getTeamSummaries, getHomeroomSummaries } from "@/lib/leaderboard";
 import Link from "next/link";
 import HomeroomSelect from "./HomeroomSelect";
 
@@ -120,6 +120,38 @@ async function Homeroom({
   });
 
   const selected = homeroomParam || me?.homeroom || homerooms[0]?.homeroom;
+
+  if (selected === "__all__") {
+    const summaries = await getHomeroomSummaries(schoolId);
+    return (
+      <div className="space-y-3">
+        <HomeroomSelect homerooms={homerooms.map((h) => h.homeroom)} selected={selected} />
+        <div className="space-y-2">
+          {summaries.map((s, i) => (
+            <div
+              key={s.homeroom}
+              className={`card flex items-center gap-3 ${me?.homeroom === s.homeroom ? "ring-2 ring-blue-500" : ""}`}
+            >
+              <div className="text-xl font-bold text-gray-400 w-8 text-center">#{i + 1}</div>
+              <div className="flex-1">
+                <p className="font-semibold">
+                  {s.homeroom}{" "}
+                  {me?.homeroom === s.homeroom && (
+                    <span className="badge bg-blue-100 text-blue-800 ml-1">My Homeroom</span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {s.memberCount} students &middot; avg {s.avgPoints} pts
+                </p>
+              </div>
+              <div className="text-lg font-bold">{s.totalPoints}</div>
+            </div>
+          ))}
+          {summaries.length === 0 && <p className="text-gray-500">No homerooms yet.</p>}
+        </div>
+      </div>
+    );
+  }
 
   const rows = await prisma.leaderboardCache.findMany({
     where: { schoolId, leaderboardType: "homeroom", grouping: selected, rank: { lte: 20 } },
