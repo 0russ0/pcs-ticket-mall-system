@@ -36,9 +36,9 @@ export default async function NavBar() {
     <>
       {/* Top bar */}
       <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="Provident Charter School" width={36} height={36} className="h-9 w-auto" priority />
+            <Image src="/logo.png" alt="Provident Charter School" width={72} height={72} className="h-18 w-auto" priority />
             <span className="font-bold text-lg text-blue-600 hidden sm:inline">Student Rewards</span>
           </Link>
           <nav className="hidden md:flex items-center gap-4">
