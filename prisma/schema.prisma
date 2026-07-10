@@ -59,8 +59,9 @@ model Student {
   grade       String   @db.VarChar(2)
   homeroom    String   @db.VarChar(100)
   team        String   @db.VarChar(100)
-  totalPoints Int      @default(0) @map("total_points")
-  createdAt   DateTime @default(now()) @map("created_at")
+  totalPoints    Int      @default(0) @map("total_points")
+  lifetimePoints Int      @default(0) @map("lifetime_points")
+  createdAt      DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   school      School      @relation(fields: [schoolId], references: [id])

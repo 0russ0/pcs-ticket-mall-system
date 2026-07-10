@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 type Category = { id: number; name: string; isActive: boolean };
 
-const BUILT_IN_CATEGORIES = ["Behavior", "Academic", "Attendance", "Citizenship"];
+const BUILT_IN_CATEGORIES = ["Perseverance", "Compassion", "Self-Control"];
 
 export default function SettingsForm({
   initialSettings,

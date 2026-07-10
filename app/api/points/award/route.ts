@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getSetting } from "@/lib/settings";
 import { refreshLeaderboard } from "@/lib/leaderboard";
 
 export async function POST(req: Request) {
@@ -20,32 +19,8 @@ export async function POST(req: Request) {
   }
 
   const pointsInt = Number(points);
-  if (!Number.isInteger(pointsInt) || pointsInt === 0) {
-    return NextResponse.json({ error: "Points must be a non-zero integer" }, { status: 400 });
-  }
-
-  const allowNegative = (await getSetting(schoolId, "allow_negative_points")) === "true";
-  if (pointsInt < 0 && !allowNegative) {
-    return NextResponse.json({ error: "Negative points are not allowed" }, { status: 400 });
-  }
-
-  const maxPerDay = Number(await getSetting(schoolId, "max_points_per_day"));
-  if (maxPerDay > 0) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const todaysTotal = await prisma.pointAward.aggregate({
-      where: { studentId: student_id, createdAt: { gte: startOfDay } },
-      _sum: { points: true },
-    });
-
-    const current = todaysTotal._sum.points ?? 0;
-    if (current + pointsInt > maxPerDay) {
-      return NextResponse.json(
-        { error: `This would exceed the daily max of ${maxPerDay} points for this student` },
-        { status: 400 }
-      );
-    }
+  if (!Number.isInteger(pointsInt) || pointsInt < 1 || pointsInt > 3) {
+    return NextResponse.json({ error: "Points must be between 1 and 3" }, { status: 400 });
   }
 
   const student = await prisma.student.findFirst({ where: { id: student_id, schoolId } });
@@ -73,7 +48,10 @@ export async function POST(req: Request) {
     }),
     prisma.student.update({
       where: { id: student_id },
-      data: { totalPoints: { increment: pointsInt } },
+      data: {
+        totalPoints: { increment: pointsInt },
+        lifetimePoints: { increment: pointsInt },
+      },
     }),
   ]);
 
@@ -83,7 +61,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    message: `${pointsInt >= 0 ? "+" : ""}${pointsInt} points ${pointsInt >= 0 ? "awarded to" : "removed from"} ${student.firstName} ${student.lastName}`,
+    message: `+${pointsInt} points awarded to ${student.firstName} ${student.lastName}`,
     totalPoints: updated?.totalPoints,
   });
 }

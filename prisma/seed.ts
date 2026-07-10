@@ -8,7 +8,7 @@ const SCHOOLS = [
   { name: "Riverside Elementary", slug: "riverside" },
 ];
 
-const CATEGORIES = ["Behavior", "Academic", "Attendance", "Citizenship"];
+const CATEGORIES = ["Perseverance", "Compassion", "Self-Control"];
 
 const PRODUCTS: { name: string; description?: string; pointsCost: number; category: ProductCategory; inventoryLimit: number | null }[] = [
   // Physical Items

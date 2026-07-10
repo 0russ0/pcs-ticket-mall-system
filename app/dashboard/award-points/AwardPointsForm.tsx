@@ -22,7 +22,7 @@ export default function AwardPointsForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
   const [studentId, setStudentId] = useState<number | "">("");
-  const [points, setPoints] = useState<number>(5);
+  const [points, setPoints] = useState<number>(1);
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -92,7 +92,7 @@ export default function AwardPointsForm() {
       } else {
         setMessage({ type: "success", text: `✓ ${data.message}` });
         setReason("");
-        setPoints(5);
+        setPoints(1);
         setStudentId("");
         setSearch("");
         setStudents((prev) =>
@@ -170,16 +170,22 @@ export default function AwardPointsForm() {
         <label className="block text-sm font-medium mb-1" htmlFor="points">
           Points
         </label>
-        <input
-          id="points"
-          className="input"
-          type="number"
-          min={-500}
-          max={500}
-          value={points}
-          onChange={(e) => setPoints(Number(e.target.value))}
-          required
-        />
+        <div className="flex gap-2">
+          {[1, 2, 3].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setPoints(n)}
+              className={`flex-1 py-3 rounded-lg text-lg font-bold border-2 transition-colors ${
+                points === n
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-300 bg-white text-gray-700 hover:border-blue-400"
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
