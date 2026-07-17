@@ -44,7 +44,8 @@ model School {
   products        Product[]
   orders          Order[]
   leaderboardCache LeaderboardCache[]
-  adminSettings   AdminSetting[]
+  adminSettings    AdminSetting[]
+  digestRecipients DigestRecipient[]
 
   @@map("schools")
 }
@@ -207,4 +208,16 @@ model AdminSetting {
 
   @@unique([schoolId, settingKey])
   @@map("admin_settings")
+}
+
+model DigestRecipient {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int      @map("school_id")
+  email     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, email])
+  @@map("digest_recipients")
 }
