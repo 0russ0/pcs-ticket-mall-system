@@ -40,15 +40,18 @@ export async function GET(req: Request) {
   const studentId = searchParams.get("studentId");
   const schoolId = session.user.schoolId;
 
+  const since = searchParams.get("since");
+
   const awards = await prisma.goldenBulldog.findMany({
     where: {
       schoolId,
       ...(studentId ? { studentId: Number(studentId) } : {}),
+      ...(since ? { observedDate: { gte: new Date(since) } } : {}),
     },
     include: {
       category: { select: { name: true } },
       staff: { select: { firstName: true, lastName: true } },
-      student: { select: { firstName: true, lastName: true } },
+      student: { select: { firstName: true, lastName: true, team: true } },
     },
     orderBy: { observedDate: "desc" },
   });
