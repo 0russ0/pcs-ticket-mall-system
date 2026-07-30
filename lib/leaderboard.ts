@@ -82,17 +82,27 @@ export async function refreshLeaderboard(schoolId: number) {
 }
 
 export async function getHomeroomSummaries(schoolId: number, grades?: string[]) {
-  const students = await prisma.student.findMany({
-    where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
-    select: { homeroom: true, lifetimePoints: true },
-  });
+  const [students, bonuses] = await Promise.all([
+    prisma.student.findMany({
+      where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
+      select: { homeroom: true, lifetimePoints: true },
+    }),
+    prisma.groupBonus.groupBy({
+      by: ["groupValue"],
+      where: { schoolId, groupType: "homeroom" },
+      _sum: { points: true },
+    }),
+  ]);
 
+  const bonusMap = new Map(bonuses.map((b) => [b.groupValue, b._sum.points ?? 0]));
   const homerooms = Array.from(new Set(students.map((s) => s.homeroom))).sort();
 
   return homerooms
     .map((homeroom) => {
       const members = students.filter((s) => s.homeroom === homeroom);
-      const total = members.reduce((sum, s) => sum + s.lifetimePoints, 0);
+      const studentTotal = members.reduce((sum, s) => sum + s.lifetimePoints, 0);
+      const bonusTotal = bonusMap.get(homeroom) ?? 0;
+      const total = studentTotal + bonusTotal;
       return {
         homeroom,
         totalPoints: total,
@@ -104,7 +114,7 @@ export async function getHomeroomSummaries(schoolId: number, grades?: string[]) 
 }
 
 export async function getTeamSummaries(schoolId: number, grades?: string[]) {
-  const [students, houseBonuses] = await Promise.all([
+  const [students, houseBonuses, groupBonuses] = await Promise.all([
     prisma.student.findMany({
       where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
       select: { team: true, lifetimePoints: true },
@@ -114,9 +124,16 @@ export async function getTeamSummaries(schoolId: number, grades?: string[]) {
       where: { schoolId },
       _sum: { points: true },
     }),
+    prisma.groupBonus.groupBy({
+      by: ["groupValue"],
+      where: { schoolId, groupType: "house" },
+      _sum: { points: true },
+    }),
   ]);
 
-  const bonusMap = new Map(houseBonuses.map((b) => [b.house, b._sum.points ?? 0]));
+  const bonusMap = new Map<string, number>();
+  houseBonuses.forEach((b) => bonusMap.set(b.house, (bonusMap.get(b.house) ?? 0) + (b._sum.points ?? 0)));
+  groupBonuses.forEach((b) => bonusMap.set(b.groupValue, (bonusMap.get(b.groupValue) ?? 0) + (b._sum.points ?? 0)));
 
   return TEAMS.map((team) => {
     const members = students.filter((s) => s.team === team);

@@ -63,9 +63,13 @@ export default function BulkPointsClient({
       if (!res.ok) {
         setMessage({ type: "error", text: data.error || "Something went wrong." });
       } else {
+        const label = targetType === "student"
+          ? `${data.studentCount} student`
+          : `${options[targetType].label} — ${targetValue}`;
+        const note = targetType !== "student" ? " (added to group total only, not individual students)" : "";
         setMessage({
           type: "success",
-          text: `✓ +${points} points awarded to ${data.studentCount} student${data.studentCount !== 1 ? "s" : ""}`,
+          text: `✓ +${points} points awarded to ${label}${note}`,
         });
         setTargetValue("");
         setPoints(1);

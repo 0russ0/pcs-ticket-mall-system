@@ -18,62 +18,46 @@ export async function POST(req: Request) {
   }
 
   const pointsInt = Math.round(Number(points));
-  if (pointsInt < 1) {
-    return NextResponse.json({ error: "Points must be at least 1" }, { status: 400 });
+
+  // Student target: award points directly to the student (affects personal total)
+  if (targetType === "student") {
+    const studentId = Number(targetValue);
+    const category = await prisma.pointCategory.findFirst({
+      where: { schoolId, isActive: true },
+      orderBy: { name: "asc" },
+    });
+    if (!category) return NextResponse.json({ error: "No active categories" }, { status: 400 });
+
+    await prisma.$transaction([
+      prisma.pointAward.create({
+        data: { schoolId, studentId, staffId, categoryId: category.id, points: pointsInt, reason: reason || null },
+      }),
+      prisma.student.update({
+        where: { id: studentId },
+        data: { totalPoints: { increment: pointsInt }, lifetimePoints: { increment: pointsInt } },
+      }),
+    ]);
+
+    await refreshLeaderboard(schoolId);
+    return NextResponse.json({ success: true, studentCount: 1 });
   }
 
-  // Find matching students
-  let where: { schoolId: number; id?: number; homeroom?: string; grade?: string; team?: string } = { schoolId };
-  if (targetType === "student") {
-    where.id = Number(targetValue);
-  } else if (targetType === "homeroom") {
-    where.homeroom = targetValue;
-  } else if (targetType === "grade") {
-    where.grade = targetValue;
-  } else if (targetType === "house") {
-    where.team = targetValue;
-  } else {
+  // Group targets (house, homeroom, grade): write to group_bonuses only — do NOT touch students
+  if (!["house", "homeroom", "grade"].includes(targetType)) {
     return NextResponse.json({ error: "Invalid target type" }, { status: 400 });
   }
 
-  const students = await prisma.student.findMany({ where, select: { id: true } });
-  if (students.length === 0) {
-    return NextResponse.json({ error: "No students found for this target" }, { status: 404 });
-  }
-
-  // Get default category (first active one)
-  const category = await prisma.pointCategory.findFirst({
-    where: { schoolId, isActive: true },
-    orderBy: { name: "asc" },
+  await prisma.groupBonus.create({
+    data: {
+      schoolId,
+      staffId,
+      groupType: targetType,
+      groupValue: targetValue,
+      points: pointsInt,
+      reason: reason || null,
+    },
   });
-  if (!category) {
-    return NextResponse.json({ error: "No active point categories found" }, { status: 400 });
-  }
-
-  // Award points to all matching students in a transaction
-  await prisma.$transaction([
-    prisma.pointAward.createMany({
-      data: students.map((s) => ({
-        schoolId,
-        studentId: s.id,
-        staffId,
-        categoryId: category.id,
-        points: pointsInt,
-        reason: reason || null,
-      })),
-    }),
-    ...students.map((s) =>
-      prisma.student.update({
-        where: { id: s.id },
-        data: {
-          totalPoints: { increment: pointsInt },
-          lifetimePoints: { increment: pointsInt },
-        },
-      })
-    ),
-  ]);
 
   await refreshLeaderboard(schoolId);
-
-  return NextResponse.json({ success: true, studentCount: students.length });
+  return NextResponse.json({ success: true, groupType: targetType, groupValue: targetValue });
 }

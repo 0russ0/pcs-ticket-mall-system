@@ -47,6 +47,7 @@ model School {
   adminSettings    AdminSetting[]
   digestRecipients DigestRecipient[]
   houseBonuses     HouseBonus[]
+  groupBonuses     GroupBonus[]
   classes          Class[]
   goldenBulldogs   GoldenBulldog[]
 
@@ -94,6 +95,7 @@ model Staff {
   approvedOrders  Order[] @relation("ApprovedBy")
   completedOrders Order[] @relation("CompletedBy")
   houseBonuses    HouseBonus[]
+  groupBonuses    GroupBonus[]
   classes         Class[]
   goldenBulldogs  GoldenBulldog[]
 
@@ -293,4 +295,21 @@ model HouseBonus {
 
   @@index([schoolId, house])
   @@map("house_bonuses")
+}
+
+model GroupBonus {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int      @map("school_id")
+  staffId     Int      @map("staff_id")
+  groupType   String   @map("group_type") @db.VarChar(20)
+  groupValue  String   @map("group_value") @db.VarChar(200)
+  points      Int
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  school School @relation(fields: [schoolId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@index([schoolId, groupType, groupValue])
+  @@map("group_bonuses")
 }
