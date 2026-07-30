@@ -240,9 +240,10 @@ async function TeacherDashboard({ schoolId }: { schoolId: number }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Teacher Dashboard</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link href="/leaderboards" className="btn btn-secondary">🏆 Leaderboards</Link>
           <Link href="/dashboard/award-points" className="btn btn-secondary">⭐ Award Points</Link>
+          <Link href="/dashboard/propose-item" className="btn btn-secondary">🛍️ Propose Store Item</Link>
         </div>
       </div>
       {!useClasses && (
