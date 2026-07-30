@@ -258,50 +258,60 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
   // Cleanup on unmount
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
 
-  // Canvas size: use the smaller of viewport dimensions
-  const canvasSize = typeof window !== "undefined" ? Math.min(window.innerWidth * 0.7, window.innerHeight * 0.7, 620) : 500;
+  const [canvasSize, setCanvasSize] = useState(400);
+
+  useEffect(() => {
+    function calcSize() {
+      // Reserve: title 44px + gaps 24px + controls 120px + chips 36px + padding 32px = ~256px
+      const maxH = window.innerHeight - 256;
+      const maxW = window.innerWidth - 32;
+      setCanvasSize(Math.max(220, Math.min(maxH, maxW, 580)));
+    }
+    calcSize();
+    window.addEventListener("resize", calcSize);
+    return () => window.removeEventListener("resize", calcSize);
+  }, []);
+
+  // Redraw when canvasSize changes
+  useEffect(() => {
+    drawWheel(rotationRef.current);
+  }, [canvasSize, drawWheel]);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-950/95 backdrop-blur-sm">
-      {/* Confetti canvas */}
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-gray-950/95 backdrop-blur-sm py-3 px-4 overflow-hidden">
+      {/* Confetti */}
       {showConfetti && (
         <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none z-60" style={{ width: "100vw", height: "100vh" }} />
       )}
 
       {/* Close */}
-      <button onClick={onClose} className="absolute top-4 right-5 text-white text-4xl leading-none opacity-70 hover:opacity-100 z-10">&times;</button>
+      <button onClick={onClose} className="absolute top-3 right-4 text-white text-3xl leading-none opacity-70 hover:opacity-100 z-10">&times;</button>
 
       {/* Title */}
-      <div className="flex items-center gap-3 mb-4">
-        <Image src="/golden-bulldog.png" alt="" width={40} height={40} />
-        <h2 className="text-white text-2xl font-bold">Golden Bulldog Drawing — {periodLabel}</h2>
-        <Image src="/golden-bulldog.png" alt="" width={40} height={40} />
+      <div className="flex items-center gap-2 shrink-0">
+        <Image src="/golden-bulldog.png" alt="" width={28} height={28} />
+        <h2 className="text-white text-lg font-bold">Golden Bulldog Drawing — {periodLabel}</h2>
+        <Image src="/golden-bulldog.png" alt="" width={28} height={28} />
       </div>
 
-      {/* Wheel + pointer */}
-      <div className="relative flex items-center justify-center" style={{ width: canvasSize + 20, height: canvasSize + 20 }}>
-        {/* Pointer arrow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 drop-shadow-lg" style={{ marginTop: -2 }}>
-          <svg width="32" height="40" viewBox="0 0 32 40">
+      {/* Wheel */}
+      <div className="relative flex items-center justify-center shrink-0" style={{ width: canvasSize, height: canvasSize }}>
+        {/* Pointer */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10 drop-shadow-lg" style={{ marginTop: -4 }}>
+          <svg width="28" height="36" viewBox="0 0 32 40">
             <polygon points="16,38 2,4 30,4" fill="#ef4444" stroke="white" strokeWidth="2" />
           </svg>
         </div>
-
-        <canvas
-          ref={canvasRef}
-          width={canvasSize}
-          height={canvasSize}
-          className="rounded-full"
-        />
+        <canvas ref={canvasRef} width={canvasSize} height={canvasSize} className="rounded-full" />
       </div>
 
       {/* Controls */}
-      <div className="mt-6 flex flex-col items-center gap-4">
-        {!winner && (
+      <div className="flex flex-col items-center gap-2 shrink-0 w-full">
+        {!winner ? (
           <button
             onClick={spin}
             disabled={spinning}
-            className="px-12 py-4 rounded-2xl text-xl font-bold text-white shadow-2xl transition-all active:scale-95"
+            className="px-10 py-3 rounded-2xl text-lg font-bold text-white shadow-2xl transition-all active:scale-95"
             style={{
               background: spinning ? "#6b7280" : "linear-gradient(135deg, #f59e0b, #d97706)",
               cursor: spinning ? "not-allowed" : "pointer",
@@ -309,34 +319,32 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
           >
             {spinning ? "Spinning…" : "🎡  SPIN!"}
           </button>
-        )}
-
-        {winner && (
-          <div className="text-center animate-bounce-once">
-            <div className="bg-amber-400 text-gray-900 rounded-2xl px-10 py-5 shadow-2xl">
-              <p className="text-lg font-bold uppercase tracking-wide mb-1">🎉 Winner!</p>
-              <p className="text-4xl font-black">{winner.name}</p>
-              <p className="text-sm mt-2 opacity-75">
+        ) : (
+          <div className="flex flex-col items-center gap-2 w-full">
+            <div className="bg-amber-400 text-gray-900 rounded-2xl px-8 py-3 shadow-2xl text-center">
+              <p className="text-sm font-bold uppercase tracking-wide">🎉 Winner!</p>
+              <p className="text-3xl font-black leading-tight">{winner.name}</p>
+              <p className="text-xs mt-1 opacity-75">
                 {winner.count} Golden Bulldog{winner.count !== 1 ? "s" : ""} = {winner.count} {winner.count !== 1 ? "entries" : "entry"}
               </p>
             </div>
             <button
               onClick={() => { setWinner(null); setSpinning(false); }}
-              className="mt-4 px-8 py-3 rounded-xl text-white font-bold bg-white/20 hover:bg-white/30 transition-colors"
+              className="px-6 py-2 rounded-xl text-white text-sm font-bold bg-white/20 hover:bg-white/30 transition-colors"
             >
               Spin Again
             </button>
           </div>
         )}
-      </div>
 
-      {/* Entry list at bottom */}
-      <div className="absolute bottom-4 left-4 right-4 flex flex-wrap justify-center gap-2 opacity-60">
-        {entries.map((e) => (
-          <span key={e.studentId} className="text-white text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: e.color }}>
-            {e.name} ×{e.count}
-          </span>
-        ))}
+        {/* Entry chips */}
+        <div className="flex flex-wrap justify-center gap-1.5 opacity-60 max-h-10 overflow-hidden">
+          {entries.map((e) => (
+            <span key={e.studentId} className="text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap" style={{ backgroundColor: e.color }}>
+              {e.name} ×{e.count}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
