@@ -64,11 +64,14 @@ export async function POST(req: Request) {
   const classCache = new Map<string, number>(); // "teacherId:name:period" → classId
 
   for (const row of valid) {
-    const teacherId = staffMap.get(row.teacherEmail);
+    let teacherId = staffMap.get(row.teacherEmail);
     if (!teacherId) {
-      errors.push(`Teacher not found: ${row.teacherEmail} — they must log in first`);
-      skipped++;
-      continue;
+      // Create a placeholder staff account from the email in the export
+      const newStaff = await prisma.staff.create({
+        data: { schoolId, googleEmail: row.teacherEmail, role: "teacher" },
+      });
+      teacherId = newStaff.id;
+      staffMap.set(row.teacherEmail, teacherId);
     }
 
     const studentDbId = studentMap.get(row.studentId);
