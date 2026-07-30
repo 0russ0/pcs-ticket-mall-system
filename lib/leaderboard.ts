@@ -8,10 +8,10 @@ export const TEAMS = [
 ] as const;
 
 export const TEAM_COLORS: Record<string, string> = {
-  "Rachel Carson House": "#3B82F6",
+  "Rachel Carson House": "#10B981",
   "Clemente House": "#EF4444",
   "Hot Metal House": "#FBBF24",
-  "Liberty House": "#10B981",
+  "Liberty House": "#3B82F6",
 };
 
 export async function refreshLeaderboard(schoolId: number) {
