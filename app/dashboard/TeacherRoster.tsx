@@ -57,31 +57,48 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
   function playCashRegister() {
     try {
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      // "cha-ching": high ping then lower clunk
       const now = ctx.currentTime;
-      const ping = ctx.createOscillator();
-      const pingGain = ctx.createGain();
-      ping.type = "sine";
-      ping.frequency.setValueAtTime(1400, now);
-      ping.frequency.exponentialRampToValueAtTime(900, now + 0.08);
-      pingGain.gain.setValueAtTime(0.4, now);
-      pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      ping.connect(pingGain);
-      pingGain.connect(ctx.destination);
-      ping.start(now);
-      ping.stop(now + 0.18);
 
-      const clunk = ctx.createOscillator();
-      const clunkGain = ctx.createGain();
-      clunk.type = "triangle";
-      clunk.frequency.setValueAtTime(320, now + 0.06);
-      clunk.frequency.exponentialRampToValueAtTime(180, now + 0.18);
-      clunkGain.gain.setValueAtTime(0.35, now + 0.06);
-      clunkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-      clunk.connect(clunkGain);
-      clunkGain.connect(ctx.destination);
-      clunk.start(now + 0.06);
-      clunk.stop(now + 0.28);
+      // "CHA" — filtered white noise burst (mechanical drawer/key click)
+      const bufLen = Math.floor(ctx.sampleRate * 0.18);
+      const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 1100;
+      bp.Q.value = 0.7;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.55, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      noise.connect(bp);
+      bp.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.18);
+
+      // "CHING" — inharmonic bell stack (metallic ring that sustains)
+      const bells = [
+        { freq: 1760, gain: 0.45, decay: 0.9 },  // A6 — fundamental
+        { freq: 2637, gain: 0.22, decay: 0.5 },  // E7 — slightly sharp for metal character
+        { freq: 3520, gain: 0.13, decay: 0.28 }, // A7 — brightness
+        { freq: 4186, gain: 0.08, decay: 0.18 }, // C8 — shimmer
+      ];
+      const chingStart = now + 0.07;
+      for (const b of bells) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = b.freq;
+        g.gain.setValueAtTime(b.gain, chingStart);
+        g.gain.exponentialRampToValueAtTime(0.001, chingStart + b.decay);
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.start(chingStart);
+        osc.stop(chingStart + b.decay);
+      }
     } catch {
       // audio not available — silent fail
     }
