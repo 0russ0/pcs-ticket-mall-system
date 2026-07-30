@@ -9,6 +9,7 @@ export default function StudentUploadPage() {
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
   const [clearExisting, setClearExisting] = useState(false);
   const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -31,6 +32,8 @@ export default function StudentUploadPage() {
       return;
     }
     setSubmitting(true);
+    setUploadError(null);
+    setResult(null);
     try {
       const res = await fetch("/api/students/bulk-upload", {
         method: "POST",
@@ -38,8 +41,14 @@ export default function StudentUploadPage() {
         body: JSON.stringify({ csv: csvText, clearExisting }),
       });
       const data = await res.json();
-      setResult(data);
-      if (res.ok) router.refresh();
+      if (!res.ok) {
+        setUploadError(data.error ?? `Server error ${res.status}`);
+      } else {
+        setResult(data);
+        router.refresh();
+      }
+    } catch (e) {
+      setUploadError(String(e));
     } finally {
       setSubmitting(false);
     }
@@ -85,6 +94,12 @@ export default function StudentUploadPage() {
           <button onClick={handleUpload} disabled={submitting} className="btn btn-primary mt-3">
             {submitting ? "Uploading..." : "Confirm Upload"}
           </button>
+        </div>
+      )}
+
+      {uploadError && (
+        <div className="card bg-red-50 border border-red-200">
+          <p className="font-bold text-red-700">Upload failed: {uploadError}</p>
         </div>
       )}
 

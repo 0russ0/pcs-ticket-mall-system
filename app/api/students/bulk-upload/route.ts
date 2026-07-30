@@ -45,36 +45,53 @@ export async function POST(req: Request) {
     valid.push({ externalId, firstName, lastName, grade, homeroom, team, initialPoints });
   });
 
-  if (clearExisting) {
-    await prisma.student.deleteMany({ where: { schoolId } });
+  if (valid.length === 0 && errors.length > 0) {
+    return NextResponse.json({ created: 0, skipped: 0, errors }, { status: 400 });
   }
 
-  let created = 0;
-  let skipped = 0;
-  for (const row of valid) {
-    const existing = await prisma.student.findUnique({
-      where: { schoolId_externalId: { schoolId, externalId: row.externalId } },
-    });
-    if (existing) {
-      skipped++;
-      continue;
+  if (clearExisting) {
+    // Must delete in FK-safe order
+    const studentIds = (await prisma.student.findMany({ where: { schoolId }, select: { id: true } })).map((s) => s.id);
+    if (studentIds.length > 0) {
+      await prisma.leaderboardCache.deleteMany({ where: { studentId: { in: studentIds } } });
+      await prisma.studentClass.deleteMany({ where: { studentId: { in: studentIds } } });
+      await prisma.goldenBulldog.deleteMany({ where: { studentId: { in: studentIds } } });
+      await prisma.pointAward.deleteMany({ where: { studentId: { in: studentIds } } });
+      // Order items cascade from orders; delete orders after items aren't needed separately
+      const orderIds = (await prisma.order.findMany({ where: { studentId: { in: studentIds } }, select: { id: true } })).map((o) => o.id);
+      if (orderIds.length > 0) {
+        await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+      await prisma.student.deleteMany({ where: { schoolId } });
     }
-    await prisma.student.create({
-      data: {
+  }
+
+  // Bulk insert — skip duplicates
+  const existing = await prisma.student.findMany({ where: { schoolId }, select: { externalId: true } });
+  const existingIds = new Set(existing.map((s) => s.externalId));
+
+  const toCreate = valid.filter((r) => !existingIds.has(r.externalId));
+  const skipped = valid.length - toCreate.length;
+
+  if (toCreate.length > 0) {
+    await prisma.student.createMany({
+      data: toCreate.map((r) => ({
         schoolId,
-        externalId: row.externalId,
-        firstName: row.firstName,
-        lastName: row.lastName,
-        grade: row.grade,
-        homeroom: row.homeroom,
-        team: row.team,
-        totalPoints: row.initialPoints || 0,
-      },
+        externalId: r.externalId,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        grade: r.grade,
+        homeroom: r.homeroom,
+        team: r.team,
+        totalPoints: r.initialPoints,
+        lifetimePoints: r.initialPoints,
+      })),
+      skipDuplicates: true,
     });
-    created++;
   }
 
   await refreshLeaderboard(schoolId);
 
-  return NextResponse.json({ created, skipped, errors });
+  return NextResponse.json({ created: toCreate.length, skipped, errors });
 }
