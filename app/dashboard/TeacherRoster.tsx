@@ -133,19 +133,20 @@ export default function TeacherRoster({
                 )}
 
                 {/* Point buttons */}
-                <div className="flex gap-1">
+                <div className="flex gap-2">
                   {[1, 2, 3].map((pts) => (
                     <button
                       key={pts}
                       onClick={() => awardPoints(student, pts)}
-                      className="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 active:scale-95 transition-transform"
+                      className="w-16 h-16 rounded-xl bg-blue-600 text-white font-bold text-xl hover:bg-blue-700 active:scale-95 transition-transform"
                     >
                       {pts}
                     </button>
                   ))}
                   <button
                     onClick={() => awardHouse(student)}
-                    className="h-9 px-2 rounded-lg bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 active:scale-95 transition-transform whitespace-nowrap"
+                    className="h-16 px-4 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-transform whitespace-nowrap"
+                    style={{ backgroundColor: teamColor }}
                     title={`Award 5 pts to ${student.team}`}
                   >
                     🏠 House
