@@ -54,7 +54,41 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
     setTimeout(() => setFeedback((prev) => ({ ...prev, [studentId]: null })), 1500);
   }
 
+  function playCashRegister() {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      // "cha-ching": high ping then lower clunk
+      const now = ctx.currentTime;
+      const ping = ctx.createOscillator();
+      const pingGain = ctx.createGain();
+      ping.type = "sine";
+      ping.frequency.setValueAtTime(1400, now);
+      ping.frequency.exponentialRampToValueAtTime(900, now + 0.08);
+      pingGain.gain.setValueAtTime(0.4, now);
+      pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      ping.connect(pingGain);
+      pingGain.connect(ctx.destination);
+      ping.start(now);
+      ping.stop(now + 0.18);
+
+      const clunk = ctx.createOscillator();
+      const clunkGain = ctx.createGain();
+      clunk.type = "triangle";
+      clunk.frequency.setValueAtTime(320, now + 0.06);
+      clunk.frequency.exponentialRampToValueAtTime(180, now + 0.18);
+      clunkGain.gain.setValueAtTime(0.35, now + 0.06);
+      clunkGain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      clunk.connect(clunkGain);
+      clunkGain.connect(ctx.destination);
+      clunk.start(now + 0.06);
+      clunk.stop(now + 0.28);
+    } catch {
+      // audio not available — silent fail
+    }
+  }
+
   async function awardPoints(student: Student, pts: number) {
+    playCashRegister();
     setPointTotals((prev) => ({ ...prev, [student.id]: (prev[student.id] ?? 0) + pts }));
     flash(student.id, "points", pts);
     const cats = await fetch("/api/categories").then((r) => r.json());
