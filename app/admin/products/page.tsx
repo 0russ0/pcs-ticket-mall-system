@@ -18,6 +18,7 @@ export default async function AdminProductsPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Store Management</h1>
         <div className="flex gap-2">
+          <Link href="/store" className="btn btn-secondary">View Store</Link>
           <Link href="/admin/products/upload" className="btn btn-secondary">Bulk Upload CSV</Link>
           <Link href="/admin/products/new" className="btn btn-primary">Add Product</Link>
         </div>
