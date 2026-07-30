@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     include: {
       category: { select: { name: true } },
       staff: { select: { firstName: true, lastName: true } },
-      student: { select: { firstName: true, lastName: true, team: true } },
+      student: { select: { firstName: true, lastName: true, grade: true, homeroom: true, team: true } },
     },
     orderBy: { observedDate: "desc" },
   });
