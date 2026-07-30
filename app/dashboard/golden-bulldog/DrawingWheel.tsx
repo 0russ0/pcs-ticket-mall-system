@@ -212,18 +212,33 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
     setSpinning(true);
     setWinner(null);
 
-    const rotations = (6 + Math.random() * 4) * 2 * Math.PI;
     const extra = Math.random() * 2 * Math.PI;
-    const totalSpin = rotations + extra;
-    const duration = 5000 + Math.random() * 2000;
+    const totalSpin = 20 * 2 * Math.PI + extra; // plenty of rotations
+    const fullSpeedMs = 8000;  // spin at full speed for 8 seconds
+    const slowdownMs = 7000;   // then decelerate over 7 seconds
+    const duration = fullSpeedMs + slowdownMs; // 15 seconds total
     const startTime = performance.now();
     const startRot = rotationRef.current;
+
+    // How much angle is covered at full speed (linear portion)
+    const fullSpeedAngle = totalSpin * (fullSpeedMs / duration);
+    const slowdownAngle = totalSpin - fullSpeedAngle;
 
     function animate(now: number) {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-      // Ease out quart for satisfying deceleration
-      const eased = 1 - Math.pow(1 - t, 4);
+
+      let eased: number;
+      if (elapsed <= fullSpeedMs) {
+        // Linear — full speed
+        eased = (elapsed / duration);
+      } else {
+        // Ease out quart over the slowdown portion
+        const slowT = (elapsed - fullSpeedMs) / slowdownMs;
+        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 4);
+        eased = fullSpeedMs / duration + (slowdownAngle / totalSpin) * slowEased;
+      }
+
       rotationRef.current = startRot + totalSpin * eased;
       drawWheel(rotationRef.current);
 
