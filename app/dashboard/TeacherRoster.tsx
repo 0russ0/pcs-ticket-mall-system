@@ -56,49 +56,7 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
 
   function playCashRegister() {
     try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const now = ctx.currentTime;
-
-      // "CHA" — filtered white noise burst (mechanical drawer/key click)
-      const bufLen = Math.floor(ctx.sampleRate * 0.18);
-      const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-      const data = noiseBuf.getChannelData(0);
-      for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
-      const noise = ctx.createBufferSource();
-      noise.buffer = noiseBuf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = "bandpass";
-      bp.frequency.value = 1100;
-      bp.Q.value = 0.7;
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.55, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
-      noise.connect(bp);
-      bp.connect(noiseGain);
-      noiseGain.connect(ctx.destination);
-      noise.start(now);
-      noise.stop(now + 0.18);
-
-      // "CHING" — inharmonic bell stack (metallic ring that sustains)
-      const bells = [
-        { freq: 1760, gain: 0.45, decay: 0.9 },  // A6 — fundamental
-        { freq: 2637, gain: 0.22, decay: 0.5 },  // E7 — slightly sharp for metal character
-        { freq: 3520, gain: 0.13, decay: 0.28 }, // A7 — brightness
-        { freq: 4186, gain: 0.08, decay: 0.18 }, // C8 — shimmer
-      ];
-      const chingStart = now + 0.07;
-      for (const b of bells) {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = b.freq;
-        g.gain.setValueAtTime(b.gain, chingStart);
-        g.gain.exponentialRampToValueAtTime(0.001, chingStart + b.decay);
-        osc.connect(g);
-        g.connect(ctx.destination);
-        osc.start(chingStart);
-        osc.stop(chingStart + b.decay);
-      }
+      new Audio("/cash-register-sound.mp3").play();
     } catch {
       // audio not available — silent fail
     }
