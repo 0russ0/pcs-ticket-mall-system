@@ -104,14 +104,25 @@ export async function getHomeroomSummaries(schoolId: number, grades?: string[]) 
 }
 
 export async function getTeamSummaries(schoolId: number, grades?: string[]) {
-  const students = await prisma.student.findMany({
-    where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
-    select: { team: true, lifetimePoints: true },
-  });
+  const [students, houseBonuses] = await Promise.all([
+    prisma.student.findMany({
+      where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
+      select: { team: true, lifetimePoints: true },
+    }),
+    prisma.houseBonus.groupBy({
+      by: ["house"],
+      where: { schoolId },
+      _sum: { points: true },
+    }),
+  ]);
+
+  const bonusMap = new Map(houseBonuses.map((b) => [b.house, b._sum.points ?? 0]));
 
   return TEAMS.map((team) => {
     const members = students.filter((s) => s.team === team);
-    const total = members.reduce((sum, s) => sum + s.lifetimePoints, 0);
+    const studentTotal = members.reduce((sum, s) => sum + s.lifetimePoints, 0);
+    const bonusTotal = bonusMap.get(team) ?? 0;
+    const total = studentTotal + bonusTotal;
     return {
       team,
       color: TEAM_COLORS[team],

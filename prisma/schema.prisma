@@ -46,6 +46,7 @@ model School {
   leaderboardCache LeaderboardCache[]
   adminSettings    AdminSetting[]
   digestRecipients DigestRecipient[]
+  houseBonuses     HouseBonus[]
 
   @@map("schools")
 }
@@ -88,6 +89,7 @@ model Staff {
   pointAwards     PointAward[]
   approvedOrders  Order[] @relation("ApprovedBy")
   completedOrders Order[] @relation("CompletedBy")
+  houseBonuses    HouseBonus[]
 
   @@map("staff")
 }
@@ -221,4 +223,20 @@ model DigestRecipient {
 
   @@unique([schoolId, email])
   @@map("digest_recipients")
+}
+
+model HouseBonus {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int      @map("school_id")
+  staffId   Int      @map("staff_id")
+  house     String   @db.VarChar(100)
+  points    Int
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school School @relation(fields: [schoolId], references: [id])
+  staff  Staff  @relation(fields: [staffId], references: [id])
+
+  @@index([schoolId, house])
+  @@map("house_bonuses")
 }

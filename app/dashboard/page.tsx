@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { TEAM_COLORS } from "@/lib/leaderboard";
+import TeacherRoster from "./TeacherRoster";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -9,7 +10,7 @@ export default async function DashboardPage() {
   const schoolId = session!.user.schoolId!;
 
   if (role === "admin") return <AdminDashboard schoolId={schoolId} />;
-  if (role === "teacher") return <TeacherDashboard />;
+  if (role === "teacher") return <TeacherDashboard schoolId={schoolId} />;
   return <StudentDashboard schoolId={schoolId} studentId={session!.user.studentId!} />;
 }
 
@@ -98,24 +99,25 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
   );
 }
 
-function TeacherDashboard() {
+async function TeacherDashboard({ schoolId }: { schoolId: number }) {
+  const rows = await prisma.student.findMany({
+    where: { schoolId },
+    select: { homeroom: true },
+    distinct: ["homeroom"],
+    orderBy: { homeroom: "asc" },
+  });
+  const homerooms = rows.map((r) => r.homeroom);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Teacher Dashboard</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Link href="/dashboard/award-points" className="card text-center hover:shadow-md">
-          <div className="text-2xl mb-1">⭐</div>
-          <div className="font-semibold">Award Points</div>
-        </Link>
-        <Link href="/leaderboards" className="card text-center hover:shadow-md">
-          <div className="text-2xl mb-1">🏆</div>
-          <div className="font-semibold">Leaderboards</div>
-        </Link>
-        <Link href="/store" className="card text-center hover:shadow-md">
-          <div className="text-2xl mb-1">🛍️</div>
-          <div className="font-semibold">Store Inventory</div>
-        </Link>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Teacher Dashboard</h1>
+        <div className="flex gap-2">
+          <Link href="/leaderboards" className="btn btn-secondary">🏆 Leaderboards</Link>
+          <Link href="/dashboard/award-points" className="btn btn-secondary">⭐ Award Points</Link>
+        </div>
       </div>
+      <TeacherRoster homerooms={homerooms} />
     </div>
   );
 }
