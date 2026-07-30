@@ -23,6 +23,18 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   const valid: { externalId: string; firstName: string; lastName: string; grade: string; homeroom: string; team: string; initialPoints: number }[] = [];
 
+  // Build a case-insensitive lookup for team names
+  const teamLookup = new Map(
+    (TEAMS as readonly string[]).map((t) => [t.toLowerCase(), t])
+  );
+  // Also accept common shorthand
+  const teamAliases: Record<string, string> = {
+    "no house": "Unassigned",
+    "unassigned": "Unassigned",
+    "none": "Unassigned",
+    "": "Unassigned",
+  };
+
   parsed.data.forEach((row, i) => {
     const rowNum = i + 2;
     const externalId = row.student_id?.trim();
@@ -30,16 +42,22 @@ export async function POST(req: Request) {
     const lastName = row.last_name?.trim();
     const grade = row.grade?.trim();
     const homeroom = row.homeroom?.trim();
-    const team = row.team?.trim();
+    const rawTeam = row.team?.trim() ?? "";
     const initialPoints = row.initial_points ? Number(row.initial_points) : 0;
 
-    if (!externalId || !firstName || !lastName || !grade || !homeroom || !team) {
-      errors.push(`Row ${rowNum}: missing required field`);
+    if (!externalId || !firstName || !lastName || !grade || !homeroom) {
+      errors.push(`Row ${rowNum}: missing required field (student_id, first_name, last_name, grade, or homeroom)`);
       return;
     }
-    if (!(TEAMS as readonly string[]).includes(team)) {
-      errors.push(`Row ${rowNum}: invalid team "${team}". Must be one of: ${TEAMS.join(", ")}`);
-      return;
+
+    // Normalize team name — case-insensitive match, fallback to Unassigned
+    const team =
+      teamLookup.get(rawTeam.toLowerCase()) ??
+      teamAliases[rawTeam.toLowerCase()] ??
+      "Unassigned";
+
+    if (team === "Unassigned") {
+      errors.push(`Row ${rowNum}: ${firstName} ${lastName} has no house assigned — imported as Unassigned`);
     }
 
     valid.push({ externalId, firstName, lastName, grade, homeroom, team, initialPoints });

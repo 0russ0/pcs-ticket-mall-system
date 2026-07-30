@@ -9,6 +9,7 @@ export default function StudentUploadPage() {
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
   const [clearExisting, setClearExisting] = useState(false);
   const [result, setResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
+  // errors from API include both hard errors and soft warnings (e.g. Unassigned house)
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
@@ -105,11 +106,11 @@ export default function StudentUploadPage() {
 
       {result && (
         <div className="card space-y-2">
-          <p className="font-bold text-green-700">{result.created} students created. {result.skipped} skipped (duplicates).</p>
+          <p className="font-bold text-green-700">✓ {result.created} students imported. {result.skipped > 0 ? `${result.skipped} skipped (already exist).` : ""}</p>
           {result.errors.length > 0 && (
             <div>
-              <p className="font-bold text-red-700">{result.errors.length} errors:</p>
-              <ul className="text-sm text-red-600 list-disc pl-5">
+              <p className="font-semibold text-amber-700">{result.errors.length} notices (students were still imported):</p>
+              <ul className="text-sm text-amber-700 list-disc pl-5 max-h-60 overflow-y-auto">
                 {result.errors.map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             </div>
