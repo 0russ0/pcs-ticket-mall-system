@@ -13,12 +13,14 @@ const STUDENT_LINKS = [
 const TEACHER_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/dashboard/award-points", label: "Award Points" },
+  { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
   { href: "/leaderboards", label: "Leaderboards" },
 ];
 
 const ADMIN_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/dashboard/award-points", label: "Award Points" },
+  { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
   { href: "/admin/orders", label: "Approvals" },
   { href: "/admin/products", label: "Store" },
   { href: "/leaderboards", label: "Leaderboards" },

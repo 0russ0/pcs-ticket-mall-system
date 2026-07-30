@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { TEAM_COLORS } from "@/lib/leaderboard";
+import GoldenBulldogModal from "@/components/GoldenBulldogModal";
 
 type Student = {
   id: number;
@@ -22,6 +24,7 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({});
   const [pointTotals, setPointTotals] = useState<{ [id: number]: number }>({});
+  const [bulldogStudent, setBulldogStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     if (!selected) return;
@@ -147,6 +150,13 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
                   >
                     🏠 House
                   </button>
+                  <button
+                    onClick={() => setBulldogStudent(student)}
+                    className="w-16 h-16 rounded-xl bg-amber-50 border-2 border-amber-300 hover:border-amber-500 active:scale-95 transition-transform flex items-center justify-center"
+                    title="Award Golden Bulldog"
+                  >
+                    <Image src="/golden-bulldog.png" alt="Golden Bulldog" width={44} height={44} />
+                  </button>
                 </div>
               </div>
             );
@@ -156,6 +166,13 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
 
       {!loading && selected && students.length === 0 && (
         <p className="text-gray-500 text-center py-8">No students found in {selected.label}.</p>
+      )}
+
+      {bulldogStudent && (
+        <GoldenBulldogModal
+          prefillStudent={bulldogStudent}
+          onClose={() => setBulldogStudent(null)}
+        />
       )}
     </div>
   );

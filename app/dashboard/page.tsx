@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import Image from "next/image";
 import { TEAM_COLORS } from "@/lib/leaderboard";
 import TeacherRoster from "./TeacherRoster";
 
@@ -18,12 +19,19 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) return <p>Student record not found.</p>;
 
-  const recentAwards = await prisma.pointAward.findMany({
+  const [goldenBulldogs, recentAwards] = await Promise.all([
+    prisma.goldenBulldog.findMany({
+      where: { studentId },
+      orderBy: { observedDate: "desc" },
+      include: { category: { select: { name: true } } },
+    }),
+    prisma.pointAward.findMany({
     where: { studentId },
     orderBy: { createdAt: "desc" },
     take: 5,
-    include: { category: true },
-  });
+      include: { category: true },
+    }),
+  ]);
 
   const rankRow = await prisma.leaderboardCache.findFirst({
     where: { schoolId, leaderboardType: "school_wide", studentId },
@@ -76,6 +84,27 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
           <div className="font-semibold">My Team</div>
         </Link>
       </div>
+
+      {goldenBulldogs.length > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-bold mb-3">Golden Bulldogs</h2>
+          <div className="flex flex-wrap gap-3">
+            {goldenBulldogs.map((gb) => (
+              <div key={gb.id} className="flex flex-col items-center gap-1 group relative">
+                <Image src="/golden-bulldog.png" alt="Golden Bulldog" width={52} height={52} className="drop-shadow" />
+                <span className="text-xs text-gray-500">
+                  {new Date(gb.observedDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-gray-800 text-white text-xs rounded-lg px-3 py-2 w-48 z-10 shadow-lg">
+                  <p className="font-bold mb-1">{gb.category.name}</p>
+                  <p>{gb.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2 className="text-lg font-bold mb-2">Recent Activity</h2>

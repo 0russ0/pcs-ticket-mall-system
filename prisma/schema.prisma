@@ -48,6 +48,7 @@ model School {
   digestRecipients DigestRecipient[]
   houseBonuses     HouseBonus[]
   classes          Class[]
+  goldenBulldogs   GoldenBulldog[]
 
   @@map("schools")
 }
@@ -72,6 +73,7 @@ model Student {
   orders      Order[]
   leaderboardCache LeaderboardCache[]
   classes     StudentClass[]
+  goldenBulldogs GoldenBulldog[]
 
   @@unique([schoolId, externalId])
   @@index([schoolId, totalPoints])
@@ -93,6 +95,7 @@ model Staff {
   completedOrders Order[] @relation("CompletedBy")
   houseBonuses    HouseBonus[]
   classes         Class[]
+  goldenBulldogs  GoldenBulldog[]
 
   @@map("staff")
 }
@@ -133,8 +136,9 @@ model PointCategory {
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  school      School       @relation(fields: [schoolId], references: [id])
-  pointAwards PointAward[]
+  school         School          @relation(fields: [schoolId], references: [id])
+  pointAwards    PointAward[]
+  goldenBulldogs GoldenBulldog[]
 
   @@unique([schoolId, name])
   @@map("point_categories")
@@ -254,6 +258,25 @@ model DigestRecipient {
 
   @@unique([schoolId, email])
   @@map("digest_recipients")
+}
+
+model GoldenBulldog {
+  id           Int      @id @default(autoincrement())
+  schoolId     Int      @map("school_id")
+  staffId      Int      @map("staff_id")
+  studentId    Int      @map("student_id")
+  categoryId   Int      @map("category_id")
+  observedDate DateTime @map("observed_date") @db.Date
+  description  String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  school   School        @relation(fields: [schoolId], references: [id])
+  staff    Staff         @relation(fields: [staffId], references: [id])
+  student  Student       @relation(fields: [studentId], references: [id])
+  category PointCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([schoolId, studentId])
+  @@map("golden_bulldogs")
 }
 
 model HouseBonus {
