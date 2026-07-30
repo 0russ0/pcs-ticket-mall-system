@@ -55,7 +55,7 @@ export default function MasterResetButton() {
     return (
       <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
         <p className="text-green-700 font-semibold text-lg">✓ Points Reset Complete</p>
-        <p className="text-green-600 text-sm mt-1">All student, team, and homeroom points have been zeroed out.</p>
+        <p className="text-green-600 text-sm mt-1">All student points, team totals, homeroom totals, and Golden Bulldog awards have been cleared.</p>
         <button onClick={() => setStep("idle")} className="mt-3 text-sm text-green-600 underline">Dismiss</button>
       </div>
     );
@@ -66,7 +66,7 @@ export default function MasterResetButton() {
       <div>
         <h3 className="font-bold text-red-700 text-base">Danger Zone — Master Points Reset</h3>
         <p className="text-red-600 text-sm mt-1">
-          Permanently zeroes <strong>all</strong> student points, team totals, homeroom totals, and point award history school-wide. This cannot be undone.
+          Permanently zeroes <strong>all</strong> student points, team totals, homeroom totals, point award history, and Golden Bulldog awards school-wide. This cannot be undone.
         </p>
       </div>
 

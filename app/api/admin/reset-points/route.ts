@@ -15,17 +15,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Confirmation phrase does not match." }, { status: 400 });
   }
 
-  // Wipe all point-related data for this school
+  // Wipe all points and recognition data for this school
   await prisma.$transaction([
-    // Clear leaderboard cache
     prisma.leaderboardCache.deleteMany({ where: { schoolId } }),
-    // Clear group bonuses (homeroom/grade/house bulk awards)
     prisma.groupBonus.deleteMany({ where: { schoolId } }),
-    // Clear house bonuses (teacher House button)
     prisma.houseBonus.deleteMany({ where: { schoolId } }),
-    // Clear individual point awards
     prisma.pointAward.deleteMany({ where: { schoolId } }),
-    // Reset all student point balances
+    prisma.goldenBulldog.deleteMany({ where: { schoolId } }),
     prisma.student.updateMany({
       where: { schoolId },
       data: { totalPoints: 0, lifetimePoints: 0 },
