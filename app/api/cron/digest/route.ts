@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = "pcsmall@providentcharterschool.org";
 
 const LOWER_GRADES = ["2", "3", "4", "5"];
@@ -59,6 +58,7 @@ export async function GET(req: Request) {
       : `PCS Mall Digest — ${outstanding.length} outstanding (${school.name})`;
 
     const to = school.digestRecipients.map((r) => r.email);
+    const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({ from: FROM, to, subject, html });
     results.push({ school: school.name, sent: to.length, skipped: false });
   }
