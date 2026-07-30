@@ -81,9 +81,9 @@ export async function refreshLeaderboard(schoolId: number) {
   }
 }
 
-export async function getHomeroomSummaries(schoolId: number) {
+export async function getHomeroomSummaries(schoolId: number, grades?: string[]) {
   const students = await prisma.student.findMany({
-    where: { schoolId },
+    where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
     select: { homeroom: true, lifetimePoints: true },
   });
 
@@ -103,9 +103,9 @@ export async function getHomeroomSummaries(schoolId: number) {
     .sort((a, b) => b.totalPoints - a.totalPoints);
 }
 
-export async function getTeamSummaries(schoolId: number) {
+export async function getTeamSummaries(schoolId: number, grades?: string[]) {
   const students = await prisma.student.findMany({
-    where: { schoolId },
+    where: { schoolId, ...(grades ? { grade: { in: grades } } : {}) },
     select: { team: true, lifetimePoints: true },
   });
 

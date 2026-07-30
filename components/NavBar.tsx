@@ -22,6 +22,7 @@ const ADMIN_LINKS = [
   { href: "/admin/orders", label: "Approvals" },
   { href: "/admin/products", label: "Store" },
   { href: "/leaderboards", label: "Leaderboards" },
+  { href: "/admin/bulk-points", label: "Bulk Points" },
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
 ];

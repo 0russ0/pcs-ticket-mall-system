@@ -16,7 +16,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { name, description, points_cost, category, inventory_limit, image_url, is_active } = body;
+  const { name, description, points_cost, category, inventory_limit, image_url, is_active, audience_filter } = body;
 
   const limit = inventory_limit === "unlimited" || inventory_limit === null || inventory_limit === ""
     ? null
@@ -33,6 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       ...(limit !== existing.inventoryLimit ? { inventoryAvailable: limit } : {}),
       imageUrl: image_url || null,
       isActive: is_active ?? true,
+      audienceFilter: audience_filter ?? null,
     },
   });
 
