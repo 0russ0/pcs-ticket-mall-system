@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import SettingsForm from "./SettingsForm";
 import DigestRecipientsForm from "./DigestRecipientsForm";
+import MasterResetButton from "./MasterResetButton";
 import { getSettings } from "@/lib/settings";
 
 export default async function AdminSettingsPage() {
@@ -23,6 +24,7 @@ export default async function AdminSettingsPage() {
       <p className="text-sm text-gray-500">School: {school?.name}</p>
       <SettingsForm initialSettings={settings} initialCategories={categories} />
       <DigestRecipientsForm initialRecipients={recipients.map((r) => ({ id: r.id, email: r.email }))} />
+      <MasterResetButton />
     </div>
   );
 }

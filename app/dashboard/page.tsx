@@ -113,6 +113,25 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
         </Link>
       </div>
 
+      <div className="card">
+        <h2 className="text-lg font-bold mb-2">Recent Activity</h2>
+        {recentAwards.length === 0 && <p className="text-gray-500">No points awarded yet.</p>}
+        <ul className="divide-y">
+          {recentAwards.map((a) => (
+            <li key={a.id} className="py-2 flex justify-between text-sm">
+              <div>
+                <p className="font-medium">{a.category.name}</p>
+                {a.reason && <p className="text-gray-500">{a.reason}</p>}
+              </div>
+              <span className={`font-bold ${a.points >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {a.points >= 0 ? "+" : ""}
+                {a.points}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {goldenBulldogs.length > 0 && (
         <div className="card">
           <div className="flex items-center justify-between mb-3">
@@ -176,24 +195,6 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
         )}
       </div>
 
-      <div className="card">
-        <h2 className="text-lg font-bold mb-2">Recent Activity</h2>
-        {recentAwards.length === 0 && <p className="text-gray-500">No points awarded yet.</p>}
-        <ul className="divide-y">
-          {recentAwards.map((a) => (
-            <li key={a.id} className="py-2 flex justify-between text-sm">
-              <div>
-                <p className="font-medium">{a.category.name}</p>
-                {a.reason && <p className="text-gray-500">{a.reason}</p>}
-              </div>
-              <span className={`font-bold ${a.points >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {a.points >= 0 ? "+" : ""}
-                {a.points}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }
