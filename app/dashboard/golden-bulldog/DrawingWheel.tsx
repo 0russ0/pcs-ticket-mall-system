@@ -134,18 +134,30 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // Center hub
-    const hubRadius = Math.max(18, radius * 0.07);
+    // Center hub — larger to fit the logo
+    const hubRadius = Math.max(32, radius * 0.13);
     ctx.beginPath();
     ctx.arc(cx, cy, hubRadius, 0, 2 * Math.PI);
     ctx.fillStyle = "white";
-    ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.shadowBlur = 6;
+    ctx.shadowColor = "rgba(0,0,0,0.4)";
+    ctx.shadowBlur = 10;
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
+
+    // Draw bulldog logo image on hub
+    const img = new window.Image();
+    img.src = "/golden-bulldog.png";
+    const logoSize = hubRadius * 1.7;
+    if (img.complete) {
+      ctx.drawImage(img, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
+    } else {
+      img.onload = () => {
+        ctx.drawImage(img, cx - logoSize / 2, cy - logoSize / 2, logoSize, logoSize);
+      };
+    }
   }, [entries, total]);
 
   useEffect(() => {
@@ -284,6 +296,30 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
         <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none z-60" style={{ width: "100vw", height: "100vh" }} />
       )}
 
+      {/* Winner full-screen overlay */}
+      {winner && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gray-950/98 px-8">
+          <p className="text-amber-400 text-2xl font-bold uppercase tracking-widest mb-6">🎉 Golden Bulldog Winner!</p>
+          <div className="flex items-center gap-8">
+            <Image src="/golden-bulldog.png" alt="Golden Bulldog" width={160} height={160} className="drop-shadow-2xl" />
+            <div className="text-center">
+              <p className="text-white text-7xl font-black leading-tight drop-shadow-lg">{winner.name}</p>
+              <p className="text-amber-300 text-xl mt-4">
+                {winner.count} Golden Bulldog{winner.count !== 1 ? "s" : ""} &mdash; {winner.count} {winner.count !== 1 ? "entries" : "entry"}
+              </p>
+            </div>
+            <Image src="/golden-bulldog.png" alt="Golden Bulldog" width={160} height={160} className="drop-shadow-2xl" />
+          </div>
+          <button
+            onClick={() => { setWinner(null); setSpinning(false); }}
+            className="mt-12 px-10 py-4 rounded-2xl text-white text-lg font-bold bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            Spin Again
+          </button>
+          <button onClick={onClose} className="mt-3 text-white/50 hover:text-white text-sm">Close</button>
+        </div>
+      )}
+
       {/* Close */}
       <button onClick={onClose} className="absolute top-3 right-4 text-white text-3xl leading-none opacity-70 hover:opacity-100 z-10">&times;</button>
 
@@ -319,23 +355,7 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
           >
             {spinning ? "Spinning…" : "🎡  SPIN!"}
           </button>
-        ) : (
-          <div className="flex flex-col items-center gap-2 w-full">
-            <div className="bg-amber-400 text-gray-900 rounded-2xl px-8 py-3 shadow-2xl text-center">
-              <p className="text-sm font-bold uppercase tracking-wide">🎉 Winner!</p>
-              <p className="text-3xl font-black leading-tight">{winner.name}</p>
-              <p className="text-xs mt-1 opacity-75">
-                {winner.count} Golden Bulldog{winner.count !== 1 ? "s" : ""} = {winner.count} {winner.count !== 1 ? "entries" : "entry"}
-              </p>
-            </div>
-            <button
-              onClick={() => { setWinner(null); setSpinning(false); }}
-              className="px-6 py-2 rounded-xl text-white text-sm font-bold bg-white/20 hover:bg-white/30 transition-colors"
-            >
-              Spin Again
-            </button>
-          </div>
-        )}
+        ) : null}
 
         {/* Entry chips */}
         <div className="flex flex-wrap justify-center gap-1.5 opacity-60 max-h-10 overflow-hidden">
