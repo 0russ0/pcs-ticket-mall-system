@@ -47,6 +47,7 @@ model School {
   adminSettings    AdminSetting[]
   digestRecipients DigestRecipient[]
   houseBonuses     HouseBonus[]
+  classes          Class[]
 
   @@map("schools")
 }
@@ -70,6 +71,7 @@ model Student {
   pointAwards PointAward[]
   orders      Order[]
   leaderboardCache LeaderboardCache[]
+  classes     StudentClass[]
 
   @@unique([schoolId, externalId])
   @@index([schoolId, totalPoints])
@@ -90,8 +92,37 @@ model Staff {
   approvedOrders  Order[] @relation("ApprovedBy")
   completedOrders Order[] @relation("CompletedBy")
   houseBonuses    HouseBonus[]
+  classes         Class[]
 
   @@map("staff")
+}
+
+model Class {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int      @map("school_id")
+  teacherId Int      @map("teacher_id")
+  name      String   @db.VarChar(200)
+  period    String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  school   School         @relation(fields: [schoolId], references: [id])
+  teacher  Staff          @relation(fields: [teacherId], references: [id])
+  students StudentClass[]
+
+  @@unique([schoolId, teacherId, name, period])
+  @@map("classes")
+}
+
+model StudentClass {
+  id        Int @id @default(autoincrement())
+  studentId Int @map("student_id")
+  classId   Int @map("class_id")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classId])
+  @@map("student_classes")
 }
 
 model PointCategory {

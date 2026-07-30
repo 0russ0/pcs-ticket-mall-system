@@ -13,23 +13,25 @@ type Student = {
   totalPoints: number;
 };
 
+type RosterItem = { label: string; value: string; type: "class" | "homeroom" };
 type FeedbackState = { [studentId: number]: { type: "points" | "house"; value?: number } | null };
 
-export default function TeacherRoster({
-  homerooms,
-}: {
-  homerooms: string[];
-}) {
-  const [selectedHomeroom, setSelectedHomeroom] = useState<string>("");
+export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem[] }) {
+  const [selected, setSelected] = useState<RosterItem | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>({});
   const [pointTotals, setPointTotals] = useState<{ [id: number]: number }>({});
 
   useEffect(() => {
-    if (!selectedHomeroom) return;
+    if (!selected) return;
     setLoading(true);
-    fetch(`/api/students?homeroom=${encodeURIComponent(selectedHomeroom)}`)
+
+    const url = selected.type === "class"
+      ? `/api/students?classId=${selected.value}`
+      : `/api/students?homeroom=${encodeURIComponent(selected.value)}`;
+
+    fetch(url)
       .then((r) => r.json())
       .then((data: Student[]) => {
         const sorted = [...data].sort((a, b) =>
@@ -42,7 +44,7 @@ export default function TeacherRoster({
         setFeedback({});
       })
       .finally(() => setLoading(false));
-  }, [selectedHomeroom]);
+  }, [selected]);
 
   function flash(studentId: number, type: "points" | "house", value?: number) {
     setFeedback((prev) => ({ ...prev, [studentId]: { type, value } }));
@@ -50,20 +52,13 @@ export default function TeacherRoster({
   }
 
   async function awardPoints(student: Student, pts: number) {
-    // Optimistic update
     setPointTotals((prev) => ({ ...prev, [student.id]: (prev[student.id] ?? 0) + pts }));
     flash(student.id, "points", pts);
-
     const cats = await fetch("/api/categories").then((r) => r.json());
     await fetch("/api/points/award", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        student_id: student.id,
-        points: pts,
-        category_id: cats[0]?.id,
-        reason: "",
-      }),
+      body: JSON.stringify({ student_id: student.id, points: pts, category_id: cats[0]?.id, reason: "" }),
     });
   }
 
@@ -76,24 +71,28 @@ export default function TeacherRoster({
     });
   }
 
+  const dropdownLabel = rosterItems[0]?.type === "class" ? "Class:" : "Class in Room:";
+
   return (
     <div className="space-y-4">
       <div className="card space-y-3">
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium whitespace-nowrap">Class in Room:</label>
+          <label className="text-sm font-medium whitespace-nowrap">{dropdownLabel}</label>
           <select
             className="input flex-1"
-            value={selectedHomeroom}
-            onChange={(e) => setSelectedHomeroom(e.target.value)}
+            value={selected?.value ?? ""}
+            onChange={(e) => {
+              const item = rosterItems.find((r) => r.value === e.target.value) ?? null;
+              setSelected(item);
+            }}
           >
-            <option value="">— Select a homeroom —</option>
-            {homerooms.map((h) => (
-              <option key={h} value={h}>{h}</option>
+            <option value="">— Select a class —</option>
+            {rosterItems.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </select>
         </div>
-
-        {selectedHomeroom && (
+        {selected && (
           <p className="text-xs text-gray-500">
             Buttons 1–3 award personal points. <strong>House</strong> awards 5 pts to the student&apos;s house team only.
           </p>
@@ -110,10 +109,9 @@ export default function TeacherRoster({
             return (
               <div
                 key={student.id}
-                className="flex items-center gap-2 px-4 py-3 transition-colors"
+                className="flex items-center gap-2 px-4 py-3"
                 style={{ borderLeft: `4px solid ${teamColor}` }}
               >
-                {/* Name + points */}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">
                     {student.lastName}, {student.firstName}
@@ -125,14 +123,12 @@ export default function TeacherRoster({
                   {pointTotals[student.id] ?? student.totalPoints}
                 </span>
 
-                {/* Feedback flash */}
                 {fb && (
                   <span className={`text-xs font-bold px-2 py-1 rounded-full ${fb.type === "house" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
                     {fb.type === "house" ? "🏠 +5" : `+${fb.value}`}
                   </span>
                 )}
 
-                {/* Point buttons */}
                 <div className="flex gap-2">
                   {[1, 2, 3].map((pts) => (
                     <button
@@ -158,8 +154,8 @@ export default function TeacherRoster({
         </div>
       )}
 
-      {!loading && selectedHomeroom && students.length === 0 && (
-        <p className="text-gray-500 text-center py-8">No students found in {selectedHomeroom}.</p>
+      {!loading && selected && students.length === 0 && (
+        <p className="text-gray-500 text-center py-8">No students found in {selected.label}.</p>
       )}
     </div>
   );

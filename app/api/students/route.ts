@@ -10,6 +10,23 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const homeroom = searchParams.get("homeroom");
+  const classId = searchParams.get("classId");
+
+  // classId lookup: find students enrolled in a specific class
+  if (classId) {
+    const enrollments = await prisma.studentClass.findMany({
+      where: { classId: Number(classId) },
+      include: {
+        student: {
+          select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true, team: true, totalPoints: true },
+        },
+      },
+    });
+    const students = enrollments
+      .map((e) => e.student)
+      .filter((s) => s !== null);
+    return NextResponse.json(students);
+  }
 
   const students = await prisma.student.findMany({
     where: {

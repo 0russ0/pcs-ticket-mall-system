@@ -100,13 +100,41 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
 }
 
 async function TeacherDashboard({ schoolId }: { schoolId: number }) {
-  const rows = await prisma.student.findMany({
-    where: { schoolId },
-    select: { homeroom: true },
-    distinct: ["homeroom"],
-    orderBy: { homeroom: "asc" },
-  });
-  const homerooms = rows.map((r) => r.homeroom);
+  const session = await import("@/auth").then((m) => m.auth());
+  const staffId = session?.user?.staffId;
+
+  // Check if this teacher has any classes assigned via enrollment import
+  const assignedClasses = staffId
+    ? await prisma.class.findMany({
+        where: { schoolId, teacherId: staffId },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, period: true },
+      })
+    : [];
+
+  // Fall back to homerooms if no classes imported yet
+  const useClasses = assignedClasses.length > 0;
+  let rosterItems: { label: string; value: string; type: "class" | "homeroom" }[] = [];
+
+  if (useClasses) {
+    rosterItems = assignedClasses.map((c) => ({
+      label: c.period ? `${c.name} (Period ${c.period})` : c.name,
+      value: String(c.id),
+      type: "class" as const,
+    }));
+  } else {
+    const homerooms = await prisma.student.findMany({
+      where: { schoolId },
+      select: { homeroom: true },
+      distinct: ["homeroom"],
+      orderBy: { homeroom: "asc" },
+    });
+    rosterItems = homerooms.map((r) => ({
+      label: r.homeroom,
+      value: r.homeroom,
+      type: "homeroom" as const,
+    }));
+  }
 
   return (
     <div className="space-y-6">
@@ -117,7 +145,12 @@ async function TeacherDashboard({ schoolId }: { schoolId: number }) {
           <Link href="/dashboard/award-points" className="btn btn-secondary">⭐ Award Points</Link>
         </div>
       </div>
-      <TeacherRoster homerooms={homerooms} />
+      {!useClasses && (
+        <div className="card bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          Showing homerooms — class enrollments haven&apos;t been imported yet. Contact your admin to import the class roster from PowerSchool.
+        </div>
+      )}
+      <TeacherRoster rosterItems={rosterItems} />
     </div>
   );
 }
@@ -180,6 +213,7 @@ async function AdminDashboard({ schoolId }: { schoolId: number }) {
           <Link href="/admin/orders" className="btn btn-secondary w-full">Approvals Queue</Link>
           <Link href="/admin/products" className="btn btn-secondary w-full">Manage Store</Link>
           <Link href="/admin/students/upload" className="btn btn-secondary w-full">Upload Students</Link>
+          <Link href="/admin/classes/upload" className="btn btn-secondary w-full">Import Class Rosters</Link>
           <Link href="/admin/staff" className="btn btn-secondary w-full">Manage Staff</Link>
           <Link href="/admin/settings" className="btn btn-secondary w-full">Settings</Link>
         </div>
