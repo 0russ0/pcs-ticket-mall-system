@@ -14,7 +14,7 @@ const TEACHER_LINKS = [
   { href: "/dashboard", label: "Home" },
   { href: "/dashboard/award-points", label: "Award Points" },
   { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
-  { href: "/dashboard/propose-item", label: "Propose Item" },
+  { href: "/store", label: "Store" },
   { href: "/leaderboards", label: "Leaderboards" },
 ];
 
