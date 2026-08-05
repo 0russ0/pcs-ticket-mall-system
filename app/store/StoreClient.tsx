@@ -85,6 +85,7 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
   const [products, setProducts] = useState<Product[]>([]);
   const [tab, setTab] = useState<Tab>("all");
   const [sort, setSort] = useState<SortKey>("name_asc");
+  const [search, setSearch] = useState("");
   const { addItem, count, total } = useCart();
   const [added, setAdded] = useState<number | null>(null);
 
@@ -114,6 +115,13 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
   const displayed = useMemo(() => {
     let list = [...products];
 
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (p) => p.name.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q)
+      );
+    }
+
     if (tab === "for_you") {
       list = list.filter((p) =>
         isTeacher || isAdmin
@@ -134,7 +142,7 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
     });
 
     return list;
-  }, [products, tab, sort, isTeacher, isAdmin, userGrade, userHomeroom, userTeam]);
+  }, [products, tab, sort, search, isTeacher, isAdmin, userGrade, userHomeroom, userTeam]);
 
   function handleAdd(p: Product) {
     addItem({
@@ -174,6 +182,18 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
           You have <span className="font-bold text-blue-600">{studentPoints}</span> points to spend.
         </p>
       )}
+
+      {/* Search */}
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">🔍</span>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search items…"
+          className="input pl-9 w-full"
+        />
+      </div>
 
       {/* Tabs + Sort row */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -260,7 +280,9 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
       </div>
 
       {displayed.length === 0 && products.length > 0 && (
-        <p className="text-gray-500 text-sm">No items in this category.</p>
+        <p className="text-gray-500 text-sm">
+          {search.trim() ? `No items match "${search}".` : "No items in this category."}
+        </p>
       )}
       {products.length === 0 && (
         <p className="text-gray-500">No items available yet.</p>
