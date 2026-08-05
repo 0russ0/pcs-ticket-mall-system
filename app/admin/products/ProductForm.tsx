@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { proxiedImageUrl } from "@/lib/image";
+import ImageInput from "@/components/ImageInput";
 
 type AudienceFilter =
   | { type: "grade_band"; value: "2-5" | "6-8" }
@@ -63,7 +63,6 @@ export default function ProductForm({
   );
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
-  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,23 +83,6 @@ export default function ProductForm({
     setAudienceValues((prev) =>
       prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]
     );
-  }
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Upload failed"); return; }
-      setImageUrl(data.url);
-    } finally {
-      setUploading(false);
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -182,12 +164,7 @@ export default function ProductForm({
 
       <div>
         <label className="block text-sm font-medium mb-1">Image</label>
-        <input type="file" accept="image/*" onChange={handleFile} className="text-sm" />
-        {uploading && <p className="text-sm text-gray-500">Uploading...</p>}
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={proxiedImageUrl(imageUrl)!} alt="Preview" className="mt-2 w-24 h-24 object-cover rounded-md" />
-        )}
+        <ImageInput value={imageUrl} onChange={setImageUrl} />
       </div>
 
       {/* Audience targeting */}
@@ -239,7 +216,7 @@ export default function ProductForm({
         <label htmlFor="active" className="text-sm">Active (visible in store)</label>
       </div>
 
-      <button type="submit" disabled={submitting} className="btn btn-primary w-full">
+      <button type="submit" disabled={submitting} className="btn btn-primary w-full" >
         {submitting ? "Saving..." : product?.id ? "Save Changes" : "Add Product"}
       </button>
     </form>

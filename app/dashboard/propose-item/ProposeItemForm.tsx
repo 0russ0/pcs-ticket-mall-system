@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { proxiedImageUrl } from "@/lib/image";
+import ImageInput from "@/components/ImageInput";
 
 const ALL_GRADES = ["K", "1", "2", "3", "4", "5", "6", "7", "8"];
 const ALL_HOUSES = ["Rachel Carson House", "Clemente House", "Hot Metal House", "Liberty House"];
@@ -17,7 +17,6 @@ export default function ProposeItemForm({ homerooms }: { homerooms: string[] }) 
   const [imageUrl, setImageUrl] = useState("");
   const [audienceType, setAudienceType] = useState<AudienceType>("all");
   const [audienceValues, setAudienceValues] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -34,23 +33,6 @@ export default function ProposeItemForm({ homerooms }: { homerooms: string[] }) 
 
   function toggleValue(v: string) {
     setAudienceValues((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
-  }
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Upload failed"); return; }
-      setImageUrl(data.url);
-    } finally {
-      setUploading(false);
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -154,12 +136,7 @@ export default function ProposeItemForm({ homerooms }: { homerooms: string[] }) 
 
       <div>
         <label className="block text-sm font-medium mb-1">Image</label>
-        <input type="file" accept="image/*" onChange={handleFile} className="text-sm" />
-        {uploading && <p className="text-sm text-gray-400 mt-1">Uploading…</p>}
-        {imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={proxiedImageUrl(imageUrl)!} alt="Preview" className="mt-2 w-28 h-28 object-cover rounded-lg border" />
-        )}
+        <ImageInput value={imageUrl} onChange={setImageUrl} />
       </div>
 
       {/* Audience */}
@@ -203,7 +180,7 @@ export default function ProposeItemForm({ homerooms }: { homerooms: string[] }) 
         )}
       </div>
 
-      <button type="submit" disabled={submitting || uploading} className="btn btn-primary w-full py-3 text-base">
+      <button type="submit" disabled={submitting} className="btn btn-primary w-full py-3 text-base">
         {submitting ? "Submitting…" : "Submit for Admin Approval"}
       </button>
     </form>
