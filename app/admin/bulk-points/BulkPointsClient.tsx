@@ -59,12 +59,13 @@ export default function BulkPointsClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetType, targetValue, points, reason }),
       });
-      const data = await res.json();
+      let data: { error?: string; studentCount?: number } = {};
+      try { data = await res.json(); } catch { /* non-JSON response */ }
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "Something went wrong." });
+        setMessage({ type: "error", text: data.error || "Something went wrong. Check the browser console for details." });
       } else {
         const label = targetType === "student"
-          ? `${data.studentCount} student`
+          ? `${data.studentCount ?? 1} student`
           : `${options[targetType].label} — ${targetValue}`;
         const note = targetType !== "student" ? " (added to group total only, not individual students)" : "";
         setMessage({
@@ -76,6 +77,9 @@ export default function BulkPointsClient({
         setReason("");
         router.refresh();
       }
+    } catch (err) {
+      console.error("bulk award failed:", err);
+      setMessage({ type: "error", text: "Network error — please try again." });
     } finally {
       setSubmitting(false);
     }
