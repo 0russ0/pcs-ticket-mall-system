@@ -48,7 +48,7 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
   const [awards, setAwards] = useState<Award[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Filter state for Recent Awards
+  // Filter state shared between wheel and Recent Awards
   const [filterGrade, setFilterGrade] = useState("");
   const [filterHomeroom, setFilterHomeroom] = useState("");
   const [filterTeam, setFilterTeam] = useState("");
@@ -79,11 +79,11 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
     });
   }, [awards, filterGrade, filterHomeroom, filterTeam]);
 
-  // Wheel entries
+  // Wheel entries derived from the filtered set so filters drive who spins
   const wheelEntries = useMemo(() => {
-    if (!awards) return [];
+    if (!filteredAwards) return [];
     const map: Record<number, { studentId: number; name: string; count: number; team: string }> = {};
-    for (const a of awards) {
+    for (const a of filteredAwards) {
       if (!map[a.studentId]) {
         map[a.studentId] = {
           studentId: a.studentId,
@@ -97,7 +97,7 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
     return Object.values(map)
       .sort((a, b) => b.count - a.count)
       .map((e) => ({ ...e, color: TEAM_COLORS[e.team] ?? "#6366f1" }));
-  }, [awards]);
+  }, [filteredAwards]);
 
   return (
     <div className="space-y-6">
@@ -118,12 +118,15 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
       {/* Admin Drawing Section */}
       {role === "admin" && (
         <div className="card space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="text-lg font-bold">Prize Drawing</h2>
-              <p className="text-sm text-gray-500">Each bulldog counts as one entry on the wheel</p>
-            </div>
-            <div className="flex gap-2">
+          <div>
+            <h2 className="text-lg font-bold">Prize Drawing</h2>
+            <p className="text-sm text-gray-500">Each bulldog counts as one entry. Filter to control who spins.</p>
+          </div>
+
+          {/* Period + filters */}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-medium text-gray-500 w-14">Period:</span>
               {(["week", "month", "all"] as Period[]).map((p) => (
                 <button
                   key={p}
@@ -136,14 +139,55 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
                 </button>
               ))}
             </div>
+
+            {awards && awards.length > 0 && (
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs font-medium text-gray-500 w-14">Filter:</span>
+                <select
+                  value={filterTeam}
+                  onChange={(e) => setFilterTeam(e.target.value)}
+                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+                >
+                  <option value="">All Houses</option>
+                  {filterOptions.teams.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <select
+                  value={filterGrade}
+                  onChange={(e) => setFilterGrade(e.target.value)}
+                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+                >
+                  <option value="">All Grades</option>
+                  {filterOptions.grades.map((g) => <option key={g} value={g}>Grade {g}</option>)}
+                </select>
+                <select
+                  value={filterHomeroom}
+                  onChange={(e) => setFilterHomeroom(e.target.value)}
+                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
+                >
+                  <option value="">All Homerooms</option>
+                  {filterOptions.homerooms.map((h) => <option key={h} value={h}>{h}</option>)}
+                </select>
+                {(filterGrade || filterHomeroom || filterTeam) && (
+                  <button
+                    onClick={() => { setFilterGrade(""); setFilterHomeroom(""); setFilterTeam(""); }}
+                    className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg border border-gray-200"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {!awards && <p className="text-gray-400 text-sm">Loading…</p>}
           {awards && wheelEntries.length === 0 && (
-            <p className="text-gray-500 text-sm">No Golden Bulldogs awarded in this period.</p>
+            <p className="text-gray-500 text-sm">No Golden Bulldogs match the current filters.</p>
           )}
           {awards && wheelEntries.length > 0 && (
             <>
+              <p className="text-xs text-gray-400">
+                {wheelEntries.length} student{wheelEntries.length !== 1 ? "s" : ""} · {filteredAwards.length} total {filteredAwards.length !== 1 ? "entries" : "entry"} in pool
+              </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {wheelEntries.map((e) => (
                   <div key={e.studentId} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border" style={{ borderLeft: `4px solid ${e.color}` }}>
@@ -285,7 +329,12 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
       {showWheel && (
         <DrawingWheel
           entries={wheelEntries}
-          periodLabel={PERIOD_LABELS[period]}
+          periodLabel={[
+            PERIOD_LABELS[period],
+            filterTeam || null,
+            filterGrade ? `Grade ${filterGrade}` : null,
+            filterHomeroom || null,
+          ].filter(Boolean).join(" · ")}
           onClose={() => setShowWheel(false)}
         />
       )}

@@ -18,6 +18,8 @@ type Student = {
 type RosterItem = { label: string; value: string; type: "class" | "homeroom" };
 type FeedbackState = { [studentId: number]: { type: "points" | "house"; value?: number } | null };
 
+const STORAGE_KEY = "teacher_roster_last_selected";
+
 export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem[] }) {
   const [selected, setSelected] = useState<RosterItem | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -25,6 +27,26 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
   const [feedback, setFeedback] = useState<FeedbackState>({});
   const [pointTotals, setPointTotals] = useState<{ [id: number]: number }>({});
   const [bulldogStudent, setBulldogStudent] = useState<Student | null>(null);
+
+  // Restore last selection on mount
+  useEffect(() => {
+    if (rosterItems.length === 0) return;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed: RosterItem = JSON.parse(saved);
+        const match = rosterItems.find((r) => r.value === parsed.value && r.type === parsed.type);
+        if (match) setSelected(match);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist selection whenever it changes
+  useEffect(() => {
+    if (!selected) return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(selected)); } catch { /* ignore */ }
+  }, [selected]);
 
   useEffect(() => {
     if (!selected) return;
