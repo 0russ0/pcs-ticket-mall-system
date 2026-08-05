@@ -256,10 +256,11 @@ async function TeacherDashboard({ schoolId }: { schoolId: number }) {
 }
 
 async function AdminDashboard({ schoolId }: { schoolId: number }) {
-  const [totalPointsAgg, totalOrders, pendingOrders, topStudents, school] = await Promise.all([
+  const [totalPointsAgg, totalOrders, pendingOrders, pendingProposals, topStudents, school] = await Promise.all([
     prisma.pointAward.aggregate({ where: { schoolId }, _sum: { points: true } }),
     prisma.order.count({ where: { schoolId } }),
     prisma.order.count({ where: { schoolId, status: "pending" } }),
+    prisma.product.count({ where: { schoolId, proposalStatus: "pending" } }),
     prisma.student.findMany({
       where: { schoolId },
       orderBy: { totalPoints: "desc" },
@@ -282,8 +283,11 @@ async function AdminDashboard({ schoolId }: { schoolId: number }) {
           <p className="text-2xl font-bold">{totalOrders}</p>
         </div>
         <Link href="/admin/orders" className="card hover:shadow-md">
-          <p className="text-sm text-gray-500">Pending Approvals</p>
+          <p className="text-sm text-gray-500">Pending Orders</p>
           <p className="text-2xl font-bold text-amber-600">{pendingOrders}</p>
+          {pendingProposals > 0 && (
+            <p className="text-xs text-yellow-700 mt-1">{pendingProposals} store proposal{pendingProposals !== 1 ? "s" : ""}</p>
+          )}
         </Link>
         <div className="card">
           <p className="text-sm text-gray-500">Students</p>

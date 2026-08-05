@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
     const since = new Date(Date.now() - 8 * 60 * 60 * 1000);
 
-    const [newOrders, outstanding] = await Promise.all([
+    const [newOrders, outstanding, pendingProposals] = await Promise.all([
       prisma.order.findMany({
         where: { schoolId: school.id, status: "pending", submittedAt: { gte: since } },
         include: {
@@ -44,17 +44,23 @@ export async function GET(req: Request) {
         },
         orderBy: { submittedAt: "asc" },
       }),
+      prisma.product.findMany({
+        where: { schoolId: school.id, proposalStatus: "pending" },
+        include: { proposedBy: { select: { firstName: true, lastName: true, googleEmail: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
     ]);
 
-    if (newOrders.length === 0 && outstanding.length === 0) {
+    if (newOrders.length === 0 && outstanding.length === 0 && pendingProposals.length === 0) {
       results.push({ school: school.name, sent: 0, skipped: true });
       continue;
     }
 
-    const html = buildEmailHtml(school.name, newOrders, outstanding);
+    const html = buildEmailHtml(school.name, newOrders, outstanding, pendingProposals);
     const newCount = newOrders.length;
-    const subject = newCount > 0
-      ? `PCS Mall Digest — ${newCount} new request${newCount !== 1 ? "s" : ""} (${school.name})`
+    const propCount = pendingProposals.length;
+    const subject = (newCount + propCount) > 0
+      ? `PCS Mall Digest — ${newCount > 0 ? `${newCount} new order${newCount !== 1 ? "s" : ""}` : ""}${newCount > 0 && propCount > 0 ? ", " : ""}${propCount > 0 ? `${propCount} store proposal${propCount !== 1 ? "s" : ""}` : ""} (${school.name})`
       : `PCS Mall Digest — ${outstanding.length} outstanding (${school.name})`;
 
     const to = school.digestRecipients.map((r) => r.email);
@@ -112,7 +118,38 @@ function gradeBandTable(
     </table>`;
 }
 
-function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outstanding: OrderWithDetails[]) {
+type ProposalWithProposer = {
+  id: number;
+  name: string;
+  pointsCost: number;
+  category: string;
+  description: string | null;
+  inventoryLimit: number | null;
+  createdAt: Date;
+  proposedBy: { firstName: string | null; lastName: string | null; googleEmail: string } | null;
+};
+
+function proposalRow(p: ProposalWithProposer) {
+  const by = p.proposedBy
+    ? (`${p.proposedBy.firstName ?? ""} ${p.proposedBy.lastName ?? ""}`.trim() || p.proposedBy.googleEmail)
+    : "Unknown";
+  const submitted = p.createdAt.toLocaleDateString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
+  });
+  const cat = p.category.replace("_", " ");
+  const inv = p.inventoryLimit !== null ? `${p.inventoryLimit} spots` : "Unlimited";
+  return `
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;">${p.name}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-transform:capitalize;">${cat}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;">${p.pointsCost} pts</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${inv}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${by}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px;">${submitted}</td>
+    </tr>`;
+}
+
+function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outstanding: OrderWithDetails[], proposals: ProposalWithProposer[]) {
   const now = new Date().toLocaleString("en-US", {
     weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
   });
@@ -142,6 +179,26 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     ${outOther.length > 0 ? gradeBandTable("Other Grades (K–1)", "#6b7280", outOther, "") : ""}
   ` : "";
 
+  const thStyle = `background:#f3f4f6;padding:8px 12px;text-align:left;font-weight:600;color:#374151;border-bottom:2px solid #e5e7eb;`;
+  const proposalsSection = proposals.length > 0 ? `
+    <h2 style="color:#d97706;font-size:18px;margin:32px 0 8px;">🛍️ Pending Store Item Proposals (${proposals.length})</h2>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">Submitted by teachers — waiting for your approval.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead><tr>
+        <th style="${thStyle}">Item</th>
+        <th style="${thStyle}">Category</th>
+        <th style="${thStyle};text-align:right;">Cost</th>
+        <th style="${thStyle}">Quantity</th>
+        <th style="${thStyle}">Proposed By</th>
+        <th style="${thStyle}">Submitted</th>
+      </tr></thead>
+      <tbody>${proposals.map(proposalRow).join("")}</tbody>
+    </table>
+    <p style="margin:12px 0 0;font-size:13px;">
+      <a href="https://pcs-ticket-mall-system.vercel.app/admin/orders" style="color:#d97706;font-weight:600;">Review proposals →</a>
+    </p>
+  ` : "";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:750px;margin:0 auto;padding:24px;color:#111827;">
@@ -153,13 +210,14 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     <p style="color:#6b7280;margin:0;font-size:13px;">${schoolName} · ${now} ET</p>
   </div>
   <div style="margin-top:24px;">
+    ${proposalsSection}
     ${newSection}
     ${outstandingSection}
   </div>
   <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">
   <p style="font-size:12px;color:#9ca3af;text-align:center;">
     PCS Student Rewards · Sent automatically ·
-    <a href="https://pcs-ticket-mall-system.vercel.app/admin/orders" style="color:#6b7280;">View all orders</a>
+    <a href="https://pcs-ticket-mall-system.vercel.app/admin/orders" style="color:#6b7280;">View approvals</a>
   </p>
 </body></html>`;
 }
