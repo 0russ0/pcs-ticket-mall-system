@@ -115,6 +115,22 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
   const displayed = useMemo(() => {
     let list = [...products];
 
+    // Students: enforce audience eligibility client-side as a safety net
+    if (canBuy) {
+      list = list.filter((p) => {
+        const f = p.audienceFilter;
+        if (!f) return true;
+        if (f.type === "grades") return !!userGrade && f.values.includes(userGrade);
+        if (f.type === "homerooms") return !!userHomeroom && f.values.includes(userHomeroom);
+        if (f.type === "houses") return !!userTeam && f.values.includes(userTeam);
+        if (f.type === "grade_band") {
+          const bands: Record<string, string[]> = { "2-5": ["2","3","4","5"], "6-8": ["6","7","8"] };
+          return !!userGrade && (bands[f.value]?.includes(userGrade) ?? false);
+        }
+        return true;
+      });
+    }
+
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
