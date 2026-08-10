@@ -34,6 +34,7 @@ export async function POST(req: Request) {
     category: ProductCategory;
     inventoryLimit: number | null;
     inventoryAvailable: number | null;
+    imageUrl: string | null;
   }[] = [];
 
   parsed.data.forEach((row, i) => {
@@ -58,6 +59,8 @@ export async function POST(req: Request) {
 
     const limit = !limitRaw || limitRaw === "unlimited" ? null : Number(limitRaw);
 
+    const imageUrl = row.image_url?.trim() || null;
+
     toCreate.push({
       schoolId,
       name,
@@ -66,6 +69,7 @@ export async function POST(req: Request) {
       category: category as ProductCategory,
       inventoryLimit: limit,
       inventoryAvailable: limit,
+      imageUrl,
     });
   });
 
