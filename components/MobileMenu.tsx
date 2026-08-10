@@ -70,7 +70,7 @@ export default function MobileMenu({
                 </button>
                 {isExpanded && (
                   <div className="bg-gray-50 border-t border-gray-100">
-                    {item.children.map((child) => (
+                    {item.children!.map((child) => (
                       <Link
                         key={child.href}
                         href={child.href}

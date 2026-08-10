@@ -68,7 +68,7 @@ export default function DesktopNav({ items }: { items: NavItem[] }) {
 
             {isOpen && (
               <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50">
-                {item.children.map((child) => {
+                {item.children!.map((child) => {
                   const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
                   return (
                     <Link
