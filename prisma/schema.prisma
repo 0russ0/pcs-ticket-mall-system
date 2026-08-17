@@ -50,6 +50,7 @@ model School {
   groupBonuses     GroupBonus[]
   classes          Class[]
   goldenBulldogs   GoldenBulldog[]
+  campaigns        Campaign[]
 
   @@map("schools")
 }
@@ -75,6 +76,7 @@ model Student {
   leaderboardCache LeaderboardCache[]
   classes     StudentClass[]
   goldenBulldogs GoldenBulldog[]
+  campaignAwards CampaignAward[]
 
   @@unique([schoolId, externalId])
   @@index([schoolId, totalPoints])
@@ -99,6 +101,7 @@ model Staff {
   classes           Class[]
   goldenBulldogs    GoldenBulldog[]
   proposedProducts  Product[] @relation("ProposedProducts")
+  campaignAwards    CampaignAward[]
 
   @@map("staff")
 }
@@ -316,4 +319,42 @@ model GroupBonus {
 
   @@index([schoolId, groupType, groupValue])
   @@map("group_bonuses")
+}
+
+model Campaign {
+  id             Int       @id @default(autoincrement())
+  schoolId       Int       @map("school_id")
+  name           String    @db.VarChar(200)
+  description    String?
+  startDate      DateTime  @map("start_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  durationType   String    @map("duration_type") @db.VarChar(20)
+  audienceFilter Json?     @map("audience_filter")
+  addToTotal     Boolean   @default(true) @map("add_to_total")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  school School          @relation(fields: [schoolId], references: [id])
+  awards CampaignAward[]
+
+  @@index([schoolId, isActive])
+  @@map("campaigns")
+}
+
+model CampaignAward {
+  id         Int      @id @default(autoincrement())
+  campaignId Int      @map("campaign_id")
+  schoolId   Int      @map("school_id")
+  studentId  Int      @map("student_id")
+  staffId    Int      @map("staff_id")
+  points     Int
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id])
+  student  Student  @relation(fields: [studentId], references: [id])
+  staff    Staff    @relation(fields: [staffId], references: [id])
+
+  @@index([campaignId, studentId])
+  @@map("campaign_awards")
 }

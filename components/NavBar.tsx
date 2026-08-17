@@ -27,6 +27,7 @@ const ADMIN_LINKS: NavItem[] = [
       { href: "/dashboard/award-points", label: "Award Points" },
       { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
       { href: "/admin/bulk-points", label: "Bulk Award" },
+      { href: "/admin/campaigns", label: "Campaigns" },
     ],
   },
   {
