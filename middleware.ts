@@ -7,7 +7,8 @@ export default auth((req) => {
 
   const publicPaths = ["/login"];
   const isApiAuth = pathname.startsWith("/api/auth");
-  const isPublic = publicPaths.includes(pathname) || isApiAuth;
+  const isCron = pathname.startsWith("/api/cron");
+  const isPublic = publicPaths.includes(pathname) || isApiAuth || isCron;
 
   if (!isLoggedIn && !isPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
