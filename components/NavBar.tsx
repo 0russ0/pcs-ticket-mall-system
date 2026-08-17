@@ -14,6 +14,7 @@ const STUDENT_LINKS: NavItem[] = [
 const TEACHER_LINKS: NavItem[] = [
   { href: "/dashboard", label: "Home" },
   { href: "/dashboard/award-points", label: "Award Points" },
+  { href: "/dashboard/campaigns", label: "Campaigns" },
   { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
   { href: "/store", label: "Store" },
   { href: "/leaderboards", label: "Leaderboards" },
