@@ -16,6 +16,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  try {
   const schools = await prisma.school.findMany({ include: { digestRecipients: true } });
   const results: { school: string; sent: number; skipped: boolean }[] = [];
 
@@ -70,6 +71,10 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ ok: true, results });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: "Handler error", detail: message }, { status: 500 });
+  }
 }
 
 type OrderWithDetails = {

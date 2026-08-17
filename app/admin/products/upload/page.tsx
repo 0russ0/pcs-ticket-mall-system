@@ -46,9 +46,10 @@ export default function ProductUploadPage() {
       <h1 className="text-2xl font-bold">Bulk Upload Products</h1>
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
-          CSV columns: <code>name,description,points_cost,category,inventory_limit</code>.
+          CSV columns: <code>name,description,points_cost,category,inventory_limit,image_url</code>.
           Category must be one of <code>physical_item</code>, <code>experience</code>, <code>privilege</code>.
-          Use <code>unlimited</code> for no inventory limit.
+          Use <code>unlimited</code> (or leave blank) for no inventory limit.
+          <code>image_url</code> is optional — paste any public image link (Amazon, etc.).
         </p>
         <input type="file" accept=".csv" onChange={handleFile} />
       </div>
