@@ -113,6 +113,9 @@ export async function POST(req: Request) {
     await prisma.student.deleteMany({ where: { schoolId } });
   }
 
+  // Clear classes (FK: classes -> staff). StudentClass rows were already removed above.
+  await prisma.class.deleteMany({ where: { schoolId } });
+
   // Clear non-admin staff
   await prisma.staff.deleteMany({ where: { schoolId, role: "teacher" } });
 
