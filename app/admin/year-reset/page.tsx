@@ -45,13 +45,14 @@ export default function YearResetPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ csv: csvText }),
       });
-      let data: Record<string, unknown> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let data: any = {};
       try { data = await res.json(); } catch { /* empty body */ }
       if (!res.ok) {
         const msg = [data.error, data.detail].filter(Boolean).join(" — ");
         setError(msg || `Server error ${res.status}`);
       } else {
-        setResult(data);
+        setResult(data as Result);
         setCsvText("");
         setFileName("");
         setPreview(null);
