@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getSetting } from "@/lib/settings";
+import { refreshLeaderboard } from "@/lib/leaderboard";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -72,30 +73,49 @@ export async function POST(req: Request) {
     total += product.pointsCost * item.quantity;
   }
 
-  const student = await prisma.student.findUnique({ where: { id: studentId } });
-  if (!student || student.totalPoints < total) {
-    return NextResponse.json({ error: "Not enough points for this order" }, { status: 400 });
+  try {
+    // Re-check balance and deduct inside a transaction so two submissions in
+    // quick succession can't both pass the balance check before either
+    // decrements — otherwise a student could commit more points than they have.
+    const order = await prisma.$transaction(async (tx) => {
+      const student = await tx.student.findUnique({ where: { id: studentId } });
+      if (!student || student.totalPoints < total) {
+        throw new Error("INSUFFICIENT_POINTS");
+      }
+
+      await tx.student.update({
+        where: { id: studentId },
+        data: { totalPoints: { decrement: total } },
+      });
+
+      return tx.order.create({
+        data: {
+          schoolId,
+          studentId,
+          totalPoints: total,
+          status: "pending",
+          items: {
+            create: items.map((item) => {
+              const product = products.find((p) => p.id === item.product_id)!;
+              return {
+                productId: item.product_id,
+                quantity: item.quantity,
+                pointsPerItem: product.pointsCost,
+              };
+            }),
+          },
+        },
+        include: { items: { include: { product: true } } },
+      });
+    });
+
+    await refreshLeaderboard(schoolId);
+
+    return NextResponse.json(order);
+  } catch (err) {
+    if (err instanceof Error && err.message === "INSUFFICIENT_POINTS") {
+      return NextResponse.json({ error: "Not enough points for this order" }, { status: 400 });
+    }
+    throw err;
   }
-
-  const order = await prisma.order.create({
-    data: {
-      schoolId,
-      studentId,
-      totalPoints: total,
-      status: "pending",
-      items: {
-        create: items.map((item) => {
-          const product = products.find((p) => p.id === item.product_id)!;
-          return {
-            productId: item.product_id,
-            quantity: item.quantity,
-            pointsPerItem: product.pointsCost,
-          };
-        }),
-      },
-    },
-    include: { items: { include: { product: true } } },
-  });
-
-  return NextResponse.json(order);
 }

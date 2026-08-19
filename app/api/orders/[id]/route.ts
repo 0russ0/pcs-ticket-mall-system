@@ -38,10 +38,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (order.status !== "pending") {
       return NextResponse.json({ error: "Order is not pending" }, { status: 400 });
     }
-    const updated = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "cancelled", notes: notes || null },
+
+    // Points were deducted at submission — refund them since the order never happened.
+    const updated = await prisma.$transaction(async (tx) => {
+      const o = await tx.order.update({
+        where: { id: orderId },
+        data: { status: "cancelled", notes: notes || null },
+      });
+      await tx.student.update({
+        where: { id: order.studentId },
+        data: { totalPoints: { increment: order.totalPoints } },
+      });
+      return o;
     });
+
+    await refreshLeaderboard(schoolId);
+
     return NextResponse.json(updated);
   }
 
@@ -50,15 +62,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Order is not approved" }, { status: 400 });
     }
 
+    // Points were already deducted at submission — only inventory changes here.
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: orderId },
         data: { status: "completed", completedAt: new Date(), completedBy: staffId },
-      });
-
-      await tx.student.update({
-        where: { id: order.studentId },
-        data: { totalPoints: { decrement: order.totalPoints } },
       });
 
       for (const item of order.items) {
@@ -70,8 +78,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
       }
     });
-
-    await refreshLeaderboard(schoolId);
 
     const updated = await prisma.order.findUnique({ where: { id: orderId } });
     return NextResponse.json(updated);
