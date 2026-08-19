@@ -113,7 +113,12 @@ export async function POST(req: Request) {
     await prisma.student.deleteMany({ where: { schoolId } });
   }
 
-  // Clear classes (FK: classes -> staff). StudentClass rows were already removed above.
+  // Clear records that reference Staff (must happen before deleting Staff)
+  await prisma.houseBonus.deleteMany({ where: { schoolId } });
+  await prisma.groupBonus.deleteMany({ where: { schoolId } });
+  // Null out proposed-by on store items so teacher FK doesn't block
+  await prisma.product.updateMany({ where: { schoolId }, data: { proposedByStaffId: null } });
+  // Classes reference Staff via teacher_id
   await prisma.class.deleteMany({ where: { schoolId } });
 
   // Clear non-admin staff
