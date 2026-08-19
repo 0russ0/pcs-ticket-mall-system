@@ -8,7 +8,7 @@ type Result = { students: number; staff: number; warnings: string[] };
 export default function YearResetPage() {
   const [csvText, setCsvText] = useState("");
   const [fileName, setFileName] = useState("");
-  const [preview, setPreview] = useState<{ students: number; teachers: number } | null>(null);
+  const [preview, setPreview] = useState<{ students: number; teachers: number; withEmail: number } | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -27,9 +27,10 @@ export default function YearResetPage() {
       setCsvText(text);
 
       const parsed = Papa.parse<Record<string, string>>(text, { header: true, skipEmptyLines: true });
-      const uniqueStudents = new Set(parsed.data.map((r) => r["Student Number"]?.trim()).filter(Boolean));
-      const uniqueTeachers = new Set(parsed.data.map((r) => r["Teacher Email"]?.trim().toLowerCase()).filter(Boolean));
-      setPreview({ students: uniqueStudents.size, teachers: uniqueTeachers.size });
+      const uniqueStudents = new Set(parsed.data.map((r) => r["StudentNumber"]?.trim()).filter(Boolean));
+      const uniqueTeachers = new Set(parsed.data.map((r) => r["TeacherEmail"]?.trim().toLowerCase()).filter(Boolean));
+      const withEmail = new Set(parsed.data.map((r) => r["StudentEmail"]?.trim().toLowerCase()).filter(Boolean));
+      setPreview({ students: uniqueStudents.size, teachers: uniqueTeachers.size, withEmail: withEmail.size });
     };
     reader.readAsText(file);
   }
@@ -70,8 +71,8 @@ export default function YearResetPage() {
       <div>
         <h1 className="text-2xl font-bold">New Year Reset</h1>
         <p className="text-gray-500 mt-1 text-sm">
-          Import a PowerSchool &ldquo;Section Enrollment with Houses&rdquo; CSV to replace all students and teachers for the new school year.
-          Admin accounts are never touched.
+          Import a PowerSchool export (columns: StudentNumber, StudentFirstName, StudentLastName, StudentEmail, TeacherLastfirst, Grade, House, TeacherEmail, CourseName)
+          to replace all students and teachers for the new school year. Admin accounts are never touched.
         </p>
       </div>
 
@@ -88,7 +89,7 @@ export default function YearResetPage() {
       <div className="card space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            PowerSchool CSV (Section Enrollment with Houses)
+            PowerSchool CSV
           </label>
           <input type="file" accept=".csv" onChange={handleFile} className="block w-full text-sm" />
           {fileName && <p className="text-xs text-gray-500 mt-1">Selected: {fileName}</p>}
@@ -99,6 +100,7 @@ export default function YearResetPage() {
             <p className="font-bold text-blue-800">File preview</p>
             <p className="text-blue-700">{preview.students} unique students found</p>
             <p className="text-blue-700">{preview.teachers} unique teachers found</p>
+            <p className="text-blue-700">{preview.withEmail} students have an email and will be able to log in</p>
             <p className="text-blue-600 text-xs">Students with NO HOUSE will be imported as Unassigned and excluded from house leaderboards.</p>
           </div>
         )}
