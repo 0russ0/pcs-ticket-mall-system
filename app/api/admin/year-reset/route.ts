@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { refreshLeaderboard } from "@/lib/leaderboard";
 import Papa from "papaparse";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 const HOUSE_MAP: Record<string, string> = {
   "rachel carson house": "Rachel Carson House",
   "clemente house": "Clemente House",
@@ -25,8 +28,17 @@ export async function POST(req: Request) {
   }
 
   const schoolId = session.user.schoolId!;
-  const body = await req.json();
-  const csvText: string = body.csv;
+
+  let csvText: string;
+  try {
+    const body = await req.json();
+    csvText = body.csv;
+    if (!csvText) return NextResponse.json({ error: "No CSV data received" }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "Could not parse request body — file may be too large" }, { status: 400 });
+  }
+
+  try {
 
   const parsed = Papa.parse<Record<string, string>>(csvText, { header: true, skipEmptyLines: true });
   if (parsed.errors.length > 0) {
@@ -134,9 +146,13 @@ export async function POST(req: Request) {
 
   await refreshLeaderboard(schoolId);
 
-  return NextResponse.json({
-    students: studentRows.length,
-    staff: teacherMap.size,
-    warnings,
-  });
+    return NextResponse.json({
+      students: studentRows.length,
+      staff: teacherMap.size,
+      warnings,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: "Import failed", detail: message }, { status: 500 });
+  }
 }

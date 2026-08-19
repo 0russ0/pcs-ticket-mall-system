@@ -45,9 +45,11 @@ export default function YearResetPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ csv: csvText }),
       });
-      const data = await res.json();
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* empty body */ }
       if (!res.ok) {
-        setError(data.error ?? `Server error ${res.status}`);
+        const msg = [data.error, data.detail].filter(Boolean).join(" — ");
+        setError(msg || `Server error ${res.status}`);
       } else {
         setResult(data);
         setCsvText("");
