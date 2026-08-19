@@ -215,7 +215,7 @@ async function AdminDashboard({ schoolId }: { schoolId: number }) {
     prisma.product.count({ where: { schoolId, proposalStatus: "pending" } }),
     prisma.student.findMany({
       where: { schoolId },
-      orderBy: { totalPoints: "desc" },
+      orderBy: { lifetimePoints: "desc" },
       take: 5,
     }),
     prisma.school.findUnique({ where: { id: schoolId } }),
@@ -258,7 +258,7 @@ async function AdminDashboard({ schoolId }: { schoolId: number }) {
                 <span>
                   #{i + 1} {s.firstName} {s.lastName}
                 </span>
-                <span className="font-bold">{s.totalPoints} pts</span>
+                <span className="font-bold">{s.lifetimePoints} pts</span>
               </li>
             ))}
           </ul>

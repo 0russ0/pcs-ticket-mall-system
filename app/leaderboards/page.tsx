@@ -86,7 +86,7 @@ async function SchoolWide({ schoolId, me, grades }: { schoolId: number; me: { id
     return (
       <div className="space-y-2">
         {students.map((s, i) => (
-          <LeaderboardCard key={s.id} rank={i + 1} name={`${s.firstName} ${s.lastName}`} grade={s.grade} team={s.team} points={s.totalPoints} highlight={s.id === me?.id} />
+          <LeaderboardCard key={s.id} rank={i + 1} name={`${s.firstName} ${s.lastName}`} grade={s.grade} team={s.team} points={s.lifetimePoints} highlight={s.id === me?.id} />
         ))}
         {students.length === 0 && <p className="text-gray-500">No students in this grade range.</p>}
       </div>

@@ -31,21 +31,21 @@ export async function refreshLeaderboard(schoolId: number) {
     totalPoints: number;
   }[] = [];
 
-  // School-wide uses current spendable balance
-  const sortedByBalance = [...students].sort((a, b) => b.totalPoints - a.totalPoints);
-  sortedByBalance.forEach((s, i) => {
+  // All leaderboards rank by lifetime points earned — never reduced by
+  // redemptions. Only a student's own spendable balance (totalPoints) drops
+  // when they place an order.
+  const sortedByLifetime = [...students].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
+
+  sortedByLifetime.forEach((s, i) => {
     rows.push({
       schoolId,
       leaderboardType: "school_wide",
       grouping: null,
       studentId: s.id,
       rank: i + 1,
-      totalPoints: s.totalPoints,
+      totalPoints: s.lifetimePoints,
     });
   });
-
-  // Homeroom & team use lifetime points — never reduced by redemptions
-  const sortedByLifetime = [...students].sort((a, b) => b.lifetimePoints - a.lifetimePoints);
 
   const homerooms = new Set(students.map((s) => s.homeroom));
   for (const homeroom of homerooms) {
