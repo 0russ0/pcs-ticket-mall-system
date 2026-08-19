@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeScope";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -17,6 +18,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId, isActive: true } });
   if (!campaign) return NextResponse.json({ error: "Campaign not found or inactive" }, { status: 404 });
+
+  if (session.user.role === "teacher") {
+    const scope = await getTeacherScope(schoolId, staffId);
+    if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) {
+      return NextResponse.json({ error: "This challenge isn't available to your classes" }, { status: 403 });
+    }
+  }
 
   const body = await req.json();
   const { studentIds, points, reason, categoryId } = body;

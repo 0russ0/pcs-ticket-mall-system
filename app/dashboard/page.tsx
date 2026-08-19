@@ -194,7 +194,7 @@ async function TeacherDashboard({ schoolId }: { schoolId: number }) {
         <div className="flex gap-2 flex-wrap">
           <Link href="/leaderboards" className="btn btn-secondary">🏆 Leaderboards</Link>
           <Link href="/dashboard/award-points" className="btn btn-secondary">⭐ Award Points</Link>
-          <Link href="/dashboard/campaigns" className="btn btn-secondary">🎯 Campaigns</Link>
+          <Link href="/dashboard/campaigns" className="btn btn-secondary">🎯 Challenges</Link>
         </div>
       </div>
       {!useClasses && (

@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import CampaignAwardPanel from "@/components/CampaignAwardPanel";
+import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeScope";
 
 function audienceSummary(filter: unknown): string {
   if (!filter || typeof filter !== "object") return "All students";
@@ -26,6 +27,11 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
 
   const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!campaign) notFound();
+
+  if (session.user.role === "teacher") {
+    const scope = await getTeacherScope(schoolId, session.user.staffId!);
+    if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) redirect("/dashboard/campaigns");
+  }
 
   const now = new Date();
   const isActive = campaign.isActive && (!campaign.endDate || campaign.endDate >= now);

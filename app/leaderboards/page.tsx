@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { TEAM_COLORS, getTeamSummaries, getHomeroomSummaries } from "@/lib/leaderboard";
+import { TEAMS, TEAM_COLORS, getTeamSummaries, getHomeroomSummaries } from "@/lib/leaderboard";
 import Link from "next/link";
 import HomeroomSelect from "./HomeroomSelect";
 
@@ -22,9 +22,9 @@ export default async function LeaderboardsPage({
   const isStudent = role === "student";
 
   const { type: typeParam = "school_wide", homeroom: homeroomParam, band = "all" } = await searchParams;
-  // Students may only ever see the house/team leaderboard — ignore any requested
-  // type so individual student points and Golden Bulldogs stay private.
-  const type = isStudent ? "team" : typeParam;
+  // Students may only ever see the house/team leaderboard and the (also
+  // house-aggregated) Challenges tab — never another student's individual points.
+  const type = isStudent && !["team", "challenges"].includes(typeParam) ? "team" : typeParam;
 
   const me =
     session!.user.role === "student"
@@ -51,19 +51,23 @@ export default async function LeaderboardsPage({
         </div>
       )}
 
-      {!isStudent && (
-        <div className="flex gap-2 overflow-x-auto">
-          <TabLink href={`/leaderboards?type=school_wide&band=${band}`} active={type === "school_wide"}>School-Wide</TabLink>
-          <TabLink href={`/leaderboards?type=homeroom&band=${band}`} active={type === "homeroom"}>Homeroom</TabLink>
-          <TabLink href={`/leaderboards?type=team&band=${band}`} active={type === "team"}>Teams</TabLink>
-        </div>
-      )}
+      <div className="flex gap-2 overflow-x-auto">
+        {!isStudent && (
+          <>
+            <TabLink href={`/leaderboards?type=school_wide&band=${band}`} active={type === "school_wide"}>School-Wide</TabLink>
+            <TabLink href={`/leaderboards?type=homeroom&band=${band}`} active={type === "homeroom"}>Homeroom</TabLink>
+          </>
+        )}
+        <TabLink href={`/leaderboards?type=team&band=${band}`} active={type === "team"}>Teams</TabLink>
+        <TabLink href={`/leaderboards?type=challenges&band=${band}`} active={type === "challenges"}>Challenges</TabLink>
+      </div>
 
       {type === "school_wide" && !isStudent && <SchoolWide schoolId={schoolId} me={me} grades={grades} />}
       {type === "homeroom" && !isStudent && (
         <Homeroom schoolId={schoolId} me={me} homeroomParam={homeroomParam} grades={grades} band={band} />
       )}
       {type === "team" && <Teams schoolId={schoolId} myTeam={me?.team} grades={grades} />}
+      {type === "challenges" && <Challenges schoolId={schoolId} myTeam={me?.team} />}
     </div>
   );
 }
@@ -189,6 +193,79 @@ async function Teams({ schoolId, myTeam, grades }: { schoolId: number; myTeam?: 
             <p className="text-sm text-gray-500">{t.memberCount} members &middot; avg {t.avgPoints} pts</p>
           </div>
           <div className="text-xl font-bold">{t.totalPoints}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// House-scoped challenges only, aggregated by house — never shows an individual
+// student's points, consistent with the rest of the leaderboard privacy rules.
+async function Challenges({ schoolId, myTeam }: { schoolId: number; myTeam?: string }) {
+  const now = new Date();
+  const campaigns = await prisma.campaign.findMany({
+    where: { schoolId, isActive: true, OR: [{ endDate: null }, { endDate: { gte: now } }] },
+    orderBy: { startDate: "desc" },
+  });
+
+  const houseCampaigns = campaigns.filter((c) => {
+    const f = c.audienceFilter as { type?: string } | null;
+    return f?.type === "houses";
+  });
+
+  if (houseCampaigns.length === 0) {
+    return <p className="text-gray-500">No house challenges are active right now.</p>;
+  }
+
+  const summaries = await Promise.all(
+    houseCampaigns.map(async (c) => {
+      const f = c.audienceFilter as { values?: string[] };
+      const targetHouses = f.values?.length ? f.values : [...TEAMS];
+
+      const awards = await prisma.campaignAward.findMany({
+        where: { campaignId: c.id },
+        select: { points: true, student: { select: { team: true } } },
+      });
+
+      const totals = new Map<string, number>(targetHouses.map((h) => [h, 0]));
+      for (const a of awards) {
+        if (totals.has(a.student.team)) {
+          totals.set(a.student.team, (totals.get(a.student.team) ?? 0) + a.points);
+        }
+      }
+
+      const ranked = [...totals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([team, points]) => ({ team, points }));
+
+      return { campaign: c, ranked };
+    })
+  );
+
+  return (
+    <div className="space-y-6">
+      {summaries.map(({ campaign, ranked }) => (
+        <div key={campaign.id} className="card space-y-3">
+          <div>
+            <p className="font-bold text-lg">{campaign.name}</p>
+            {campaign.description && <p className="text-sm text-gray-500">{campaign.description}</p>}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {ranked.map((r, i) => {
+              const color = TEAM_COLORS[r.team] || "#9ca3af";
+              return (
+                <div key={r.team} className="flex items-center gap-3 rounded-lg border p-3" style={{ borderLeft: `6px solid ${color}` }}>
+                  <div className="text-xl font-bold text-gray-400 w-7">#{i + 1}</div>
+                  <div className="flex-1">
+                    <p className="font-semibold">
+                      {r.team} {myTeam === r.team && <span className="badge bg-blue-100 text-blue-800 ml-1">My Team</span>}
+                    </p>
+                  </div>
+                  <div className="text-lg font-bold">{r.points}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
     </div>

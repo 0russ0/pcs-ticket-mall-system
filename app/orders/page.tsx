@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import CancelOrderButton from "./CancelOrderButton";
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -67,6 +68,9 @@ export default async function OrdersPage({
               <p className="text-xs text-gray-500">Completed {order.completedAt.toLocaleDateString()}</p>
             )}
             {order.notes && <p className="text-xs text-red-600 mt-1">Note: {order.notes}</p>}
+            {(order.status === "pending" || order.status === "approved") && (
+              <CancelOrderButton orderId={order.id} />
+            )}
           </div>
         ))}
       </div>

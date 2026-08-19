@@ -74,13 +74,27 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Re-check balance and deduct inside a transaction so two submissions in
-    // quick succession can't both pass the balance check before either
-    // decrements — otherwise a student could commit more points than they have.
+    // Re-check balance and stock, then deduct both inside a transaction so two
+    // submissions in quick succession can't both pass the checks before either
+    // commits — otherwise a student could commit more points/stock than exists.
     const order = await prisma.$transaction(async (tx) => {
       const student = await tx.student.findUnique({ where: { id: studentId } });
       if (!student || student.totalPoints < total) {
         throw new Error("INSUFFICIENT_POINTS");
+      }
+
+      for (const item of items) {
+        const product = products.find((p) => p.id === item.product_id)!;
+        if (product.inventoryLimit !== null) {
+          const fresh = await tx.product.findUnique({ where: { id: product.id }, select: { inventoryAvailable: true } });
+          if ((fresh?.inventoryAvailable ?? 0) < item.quantity) {
+            throw new Error(`OUT_OF_STOCK:${product.name}`);
+          }
+          await tx.product.update({
+            where: { id: product.id },
+            data: { inventoryAvailable: { decrement: item.quantity } },
+          });
+        }
       }
 
       await tx.student.update({
@@ -115,6 +129,9 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT_POINTS") {
       return NextResponse.json({ error: "Not enough points for this order" }, { status: 400 });
+    }
+    if (err instanceof Error && err.message.startsWith("OUT_OF_STOCK:")) {
+      return NextResponse.json({ error: `Not enough "${err.message.split(":")[1]}" in stock` }, { status: 400 });
     }
     throw err;
   }

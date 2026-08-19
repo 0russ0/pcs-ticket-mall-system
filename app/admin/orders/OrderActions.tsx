@@ -33,6 +33,12 @@ export default function OrderActions({ orderId, action }: { orderId: number; act
     send("reject", reason);
   }
 
+  function handleCancel() {
+    if (!window.confirm("Cancel this order? Points will be refunded and inventory restocked.")) return;
+    const reason = window.prompt("Reason for cancelling (optional):") ?? "";
+    send("cancel", reason);
+  }
+
   return (
     <div className="mt-2 space-y-1">
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -48,9 +54,14 @@ export default function OrderActions({ orderId, action }: { orderId: number; act
           </>
         )}
         {action === "approved" && (
-          <button disabled={submitting} onClick={() => send("complete")} className="btn btn-primary text-sm flex-1">
-            Mark Complete
-          </button>
+          <>
+            <button disabled={submitting} onClick={() => send("complete")} className="btn btn-primary text-sm flex-1">
+              Mark Complete
+            </button>
+            <button disabled={submitting} onClick={handleCancel} className="btn btn-danger text-sm flex-1">
+              Cancel
+            </button>
+          </>
         )}
       </div>
     </div>

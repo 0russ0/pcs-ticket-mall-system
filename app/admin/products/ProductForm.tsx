@@ -19,6 +19,7 @@ type Product = {
   inventoryLimit: number | null;
   imageUrl: string | null;
   isActive: boolean;
+  featured?: boolean;
   audienceFilter?: AudienceFilter | null;
 };
 
@@ -63,6 +64,7 @@ export default function ProductForm({
   );
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
   const [isActive, setIsActive] = useState(product?.isActive ?? true);
+  const [featured, setFeatured] = useState(product?.featured ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +100,7 @@ export default function ProductForm({
       inventory_limit: inventoryLimit === "unlimited" ? "unlimited" : Number(inventoryLimit),
       image_url: imageUrl,
       is_active: isActive,
+      featured,
       audience_filter: buildAudienceFilter(),
     };
 
@@ -214,6 +217,11 @@ export default function ProductForm({
       <div className="flex items-center gap-2">
         <input type="checkbox" id="active" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-5 w-5" />
         <label htmlFor="active" className="text-sm">Active (visible in store)</label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="featured" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="h-5 w-5" />
+        <label htmlFor="featured" className="text-sm">Featured (shown at the top of the store — max 4 items)</label>
       </div>
 
       <button type="submit" disabled={submitting} className="btn btn-primary w-full" >

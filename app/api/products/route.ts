@@ -36,7 +36,12 @@ export async function GET() {
   const isAdmin = session.user.role === "admin";
 
   const products = await prisma.product.findMany({
-    where: { schoolId: session.user.schoolId, ...(isAdmin ? {} : { isActive: true }) },
+    where: {
+      schoolId: session.user.schoolId,
+      ...(isAdmin ? {} : { isActive: true }),
+      // Out-of-stock items disappear from the store entirely until restocked.
+      OR: [{ inventoryLimit: null }, { inventoryAvailable: { gt: 0 } }],
+    },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 
@@ -66,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { name, description, points_cost, category, inventory_limit, image_url, is_active, audience_filter } = body;
+  const { name, description, points_cost, category, inventory_limit, image_url, is_active, audience_filter, featured } = body;
 
   if (!name || !points_cost || !category) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -88,6 +93,7 @@ export async function POST(req: Request) {
       imageUrl: image_url || null,
       isActive: is_active ?? true,
       audienceFilter: audience_filter ?? null,
+      featured: featured ?? false,
     },
   });
 

@@ -12,6 +12,7 @@ type Product = {
   inventoryLimit: number | null;
   inventoryAvailable: number | null;
   isActive: boolean;
+  featured: boolean;
 };
 
 export default function ProductRow({ product }: { product: Product }) {
@@ -28,7 +29,10 @@ export default function ProductRow({ product }: { product: Product }) {
 
   return (
     <tr className="border-b last:border-0">
-      <td className="py-2 pr-2 font-medium">{product.name}</td>
+      <td className="py-2 pr-2 font-medium">
+        {product.featured && <span title="Featured" className="mr-1">⭐</span>}
+        {product.name}
+      </td>
       <td className="py-2 pr-2">{product.category.replace("_", " ")}</td>
       <td className="py-2 pr-2">{product.pointsCost}</td>
       <td className="py-2 pr-2">

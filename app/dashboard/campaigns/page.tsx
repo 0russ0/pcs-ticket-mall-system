@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeScope";
 
 function audienceSummary(filter: unknown): string {
   if (!filter || typeof filter !== "object") return "All students";
@@ -22,19 +23,27 @@ export default async function TeacherCampaignsPage() {
   const schoolId = session.user.schoolId!;
   const now = new Date();
 
-  const campaigns = await prisma.campaign.findMany({
+  const allCampaigns = await prisma.campaign.findMany({
     where: { schoolId, isActive: true, OR: [{ endDate: null }, { endDate: { gte: now } }] },
     orderBy: { startDate: "desc" },
     include: { _count: { select: { awards: true } } },
   });
 
+  // Teachers only see challenges that overlap the grades/homerooms they actually
+  // teach — house-scoped (and unrestricted) challenges are always visible to everyone.
+  let campaigns = allCampaigns;
+  if (session.user.role === "teacher") {
+    const scope = await getTeacherScope(schoolId, session.user.staffId!);
+    campaigns = allCampaigns.filter((c) => isChallengeVisibleToTeacher(c.audienceFilter, scope));
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Active Campaigns</h1>
+      <h1 className="text-2xl font-bold">Challenges</h1>
 
       {campaigns.length === 0 ? (
         <div className="card text-center py-12 text-gray-400">
-          <p className="text-lg">No active campaigns right now.</p>
+          <p className="text-lg">No active challenges right now.</p>
           <p className="text-sm mt-1">Check back later or ask your admin to create one.</p>
         </div>
       ) : (

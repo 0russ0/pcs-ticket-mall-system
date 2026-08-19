@@ -21,6 +21,7 @@ type Product = {
   inventoryAvailable: number | null;
   imageUrl: string | null;
   isActive: boolean;
+  featured: boolean;
   audienceFilter: AudienceFilter | null;
 };
 
@@ -64,6 +65,23 @@ function isTargeted(
   return false;
 }
 
+function isEligibleForStudent(
+  filter: AudienceFilter | null,
+  grade: string | null,
+  homeroom: string | null,
+  team: string | null
+): boolean {
+  if (!filter) return true;
+  if (filter.type === "grades") return !!grade && filter.values.includes(grade);
+  if (filter.type === "homerooms") return !!homeroom && filter.values.includes(homeroom);
+  if (filter.type === "houses") return !!team && filter.values.includes(team);
+  if (filter.type === "grade_band") {
+    const bands: Record<string, string[]> = { "2-5": ["2","3","4","5"], "6-8": ["6","7","8"] };
+    return !!grade && (bands[filter.value]?.includes(grade) ?? false);
+  }
+  return true;
+}
+
 function audienceSummary(filter: AudienceFilter | null): string | null {
   if (!filter) return null;
   if (filter.type === "grade_band") return `Grades ${filter.value} only`;
@@ -102,6 +120,13 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
     [products, userGrade, userHomeroom, userTeam]
   );
 
+  const featuredProducts = useMemo(() => {
+    return products
+      .filter((p) => p.featured)
+      .filter((p) => !canBuy || isEligibleForStudent(p.audienceFilter, userGrade, userHomeroom, userTeam))
+      .slice(0, 4);
+  }, [products, canBuy, userGrade, userHomeroom, userTeam]);
+
   const tabs: { value: Tab; label: string; count?: number }[] = [
     { value: "all", label: "All Items" },
     ...(forYouCount > 0 || isTeacher || isAdmin
@@ -117,18 +142,7 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
 
     // Students: enforce audience eligibility client-side as a safety net
     if (canBuy) {
-      list = list.filter((p) => {
-        const f = p.audienceFilter;
-        if (!f) return true;
-        if (f.type === "grades") return !!userGrade && f.values.includes(userGrade);
-        if (f.type === "homerooms") return !!userHomeroom && f.values.includes(userHomeroom);
-        if (f.type === "houses") return !!userTeam && f.values.includes(userTeam);
-        if (f.type === "grade_band") {
-          const bands: Record<string, string[]> = { "2-5": ["2","3","4","5"], "6-8": ["6","7","8"] };
-          return !!userGrade && (bands[f.value]?.includes(userGrade) ?? false);
-        }
-        return true;
-      });
+      list = list.filter((p) => isEligibleForStudent(p.audienceFilter, userGrade, userHomeroom, userTeam));
     }
 
     if (search.trim()) {
@@ -245,54 +259,40 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
         </select>
       </div>
 
+      {/* Featured */}
+      {featuredProducts.length > 0 && (
+        <div>
+          <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            ⭐ Featured
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {featuredProducts.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                canBuy={canBuy}
+                isStaffView={isTeacher || isAdmin}
+                added={added === p.id}
+                onAdd={() => handleAdd(p)}
+                highlight
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {displayed.map((p) => {
-          const outOfStock = p.inventoryLimit !== null && (p.inventoryAvailable ?? 0) <= 0;
-          const exclusive = audienceSummary(p.audienceFilter);
-          return (
-            <div key={p.id} className="card flex flex-col p-3">
-              <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
-                {p.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={proxiedImageUrl(p.imageUrl)!} alt={p.name} className="object-cover w-full h-full" />
-                ) : (
-                  <span className="text-3xl">🎁</span>
-                )}
-              </div>
-              <span className={`badge ${CATEGORY_COLORS[p.category]} self-start mb-1 text-xs`}>
-                {CATEGORY_LABELS[p.category]}
-              </span>
-              {exclusive && (
-                <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mb-1 self-start">
-                  ★ {exclusive}
-                </span>
-              )}
-              <p className="font-semibold text-sm flex-1">{p.name}</p>
-              {p.description && (
-                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{p.description}</p>
-              )}
-              <p className="font-bold text-blue-600 mt-1">{p.pointsCost} pts</p>
-              {p.inventoryAvailable !== null && (
-                <p className="text-xs text-gray-400">{p.inventoryAvailable} left</p>
-              )}
-              {canBuy && (
-                outOfStock ? (
-                  <span className="text-xs text-red-600 mt-2">Out of stock</span>
-                ) : (
-                  <button onClick={() => handleAdd(p)} className="btn btn-secondary mt-2 text-sm">
-                    {added === p.id ? "Added ✓" : "Add to Cart"}
-                  </button>
-                )
-              )}
-              {(isTeacher || isAdmin) && (
-                <span className={`mt-2 text-xs px-2 py-0.5 rounded self-start ${p.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                  {p.isActive ? "Active" : "Inactive"}
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {displayed.map((p) => (
+          <ProductCard
+            key={p.id}
+            product={p}
+            canBuy={canBuy}
+            isStaffView={isTeacher || isAdmin}
+            added={added === p.id}
+            onAdd={() => handleAdd(p)}
+          />
+        ))}
       </div>
 
       {displayed.length === 0 && products.length > 0 && (
@@ -315,6 +315,67 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
             <Link href="/store/cart" className="btn btn-primary">View Cart</Link>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function ProductCard({
+  product: p,
+  canBuy,
+  isStaffView,
+  added,
+  onAdd,
+  highlight,
+}: {
+  product: Product;
+  canBuy: boolean;
+  isStaffView: boolean;
+  added: boolean;
+  onAdd: () => void;
+  highlight?: boolean;
+}) {
+  const outOfStock = p.inventoryLimit !== null && (p.inventoryAvailable ?? 0) <= 0;
+  const exclusive = audienceSummary(p.audienceFilter);
+  return (
+    <div className={`card flex flex-col p-3 ${highlight ? "ring-2 ring-amber-400" : ""}`}>
+      <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+        {p.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={proxiedImageUrl(p.imageUrl)!} alt={p.name} className="object-cover w-full h-full" />
+        ) : (
+          <span className="text-3xl">🎁</span>
+        )}
+      </div>
+      <span className={`badge ${CATEGORY_COLORS[p.category]} self-start mb-1 text-xs`}>
+        {CATEGORY_LABELS[p.category]}
+      </span>
+      {exclusive && (
+        <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mb-1 self-start">
+          ★ {exclusive}
+        </span>
+      )}
+      <p className="font-semibold text-sm flex-1">{p.name}</p>
+      {p.description && (
+        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{p.description}</p>
+      )}
+      <p className="font-bold text-blue-600 mt-1">{p.pointsCost} pts</p>
+      {p.inventoryAvailable !== null && (
+        <p className="text-xs text-gray-400">{p.inventoryAvailable} left</p>
+      )}
+      {canBuy && (
+        outOfStock ? (
+          <span className="text-xs text-red-600 mt-2">Out of stock</span>
+        ) : (
+          <button onClick={onAdd} className="btn btn-secondary mt-2 text-sm">
+            {added ? "Added ✓" : "Add to Cart"}
+          </button>
+        )
+      )}
+      {isStaffView && (
+        <span className={`mt-2 text-xs px-2 py-0.5 rounded self-start ${p.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+          {p.isActive ? "Active" : "Inactive"}
+        </span>
       )}
     </div>
   );

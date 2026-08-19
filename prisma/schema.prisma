@@ -181,6 +181,7 @@ model Product {
   imageUrl            String?  @map("image_url") @db.VarChar(500)
   audienceFilter      Json?    @map("audience_filter")
   isActive            Boolean  @default(true) @map("is_active")
+  featured            Boolean  @default(false) @map("featured")
   proposalStatus      String   @default("approved") @map("proposal_status") @db.VarChar(20)
   proposedByStaffId   Int?     @map("proposed_by_staff_id")
   createdAt           DateTime @default(now()) @map("created_at")
@@ -205,6 +206,9 @@ model Order {
   completedAt  DateTime?   @map("completed_at")
   completedBy  Int?        @map("completed_by")
   notes        String?
+  cancelledAt     DateTime? @map("cancelled_at")
+  cancelledBySelf Boolean   @default(false) @map("cancelled_by_self")
+  cancelAcknowledgedAt DateTime? @map("cancel_acknowledged_at")
 
   school        School      @relation(fields: [schoolId], references: [id])
   student       Student     @relation(fields: [studentId], references: [id])
