@@ -37,15 +37,19 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const studentId = searchParams.get("studentId");
   const schoolId = session.user.schoolId;
-
   const since = searchParams.get("since");
+
+  // Students may only ever see their own awards — ignore any requested studentId
+  // and force self-scoping regardless of what the client sends.
+  const studentId = session.user.role === "student"
+    ? session.user.studentId
+    : searchParams.get("studentId") ? Number(searchParams.get("studentId")) : null;
 
   const awards = await prisma.goldenBulldog.findMany({
     where: {
       schoolId,
-      ...(studentId ? { studentId: Number(studentId) } : {}),
+      ...(studentId ? { studentId } : {}),
       ...(since ? { observedDate: { gte: new Date(since) } } : {}),
     },
     include: {

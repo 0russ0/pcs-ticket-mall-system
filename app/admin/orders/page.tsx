@@ -99,21 +99,32 @@ export default async function AdminOrdersPage() {
         </section>
       )}
 
-      {/* Order approvals */}
+      {/* Pending approval */}
       <section className="space-y-2">
-        <h2 className="text-lg font-bold">Pending Orders ({pending.length})</h2>
-        {pending.length === 0 && <p className="text-gray-500">No pending orders.</p>}
-        {pending.map((order) => (
-          <OrderCard key={order.id} order={order} action="pending" />
-        ))}
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          ⏳ Pending Approval
+          <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800 font-bold">{pending.length}</span>
+        </h2>
+        <div className="space-y-2 border-l-4 border-amber-300 pl-3">
+          {pending.length === 0 && <p className="text-gray-500">No pending orders.</p>}
+          {pending.map((order) => (
+            <OrderCard key={order.id} order={order} action="pending" />
+          ))}
+        </div>
       </section>
 
+      {/* Approved, waiting for the student to pick up */}
       <section className="space-y-2">
-        <h2 className="text-lg font-bold">Approved &mdash; Awaiting Pickup ({approved.length})</h2>
-        {approved.length === 0 && <p className="text-gray-500">No approved orders awaiting pickup.</p>}
-        {approved.map((order) => (
-          <OrderCard key={order.id} order={order} action="approved" />
-        ))}
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          📦 Pending Pickup
+          <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 font-bold">{approved.length}</span>
+        </h2>
+        <div className="space-y-2 border-l-4 border-blue-300 pl-3">
+          {approved.length === 0 && <p className="text-gray-500">No approved orders awaiting pickup.</p>}
+          {approved.map((order) => (
+            <OrderCard key={order.id} order={order} action="approved" />
+          ))}
+        </div>
       </section>
 
       <section className="space-y-2">

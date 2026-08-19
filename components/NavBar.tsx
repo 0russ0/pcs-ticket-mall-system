@@ -63,7 +63,7 @@ export default async function NavBar() {
       <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
           <Image src="/logo.png" alt="Provident Charter School" width={72} height={72} className="h-18 w-auto" priority />
-          <span className="font-bold text-lg text-blue-600 hidden sm:inline">Student Rewards</span>
+          <span className="font-bold text-lg text-blue-600 hidden sm:inline">Bulldog Bank</span>
         </Link>
 
         <DesktopNav items={items} />

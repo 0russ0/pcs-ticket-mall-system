@@ -19,14 +19,7 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
   const student = await prisma.student.findUnique({ where: { id: studentId } });
   if (!student) return <p>Student record not found.</p>;
 
-  // Monday of current week
-  const todayDow = new Date().getDay();
-  const mondayOffset = todayDow === 0 ? 6 : todayDow - 1;
-  const monday = new Date();
-  monday.setDate(monday.getDate() - mondayOffset);
-  monday.setHours(0, 0, 0, 0);
-
-  const [goldenBulldogs, recentAwards, weeklyGBs, allGBRankings] = await Promise.all([
+  const [goldenBulldogs, recentAwards, allGBRankings] = await Promise.all([
     prisma.goldenBulldog.findMany({
       where: { studentId },
       orderBy: { observedDate: "desc" },
@@ -38,16 +31,7 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
       take: 5,
       include: { category: true },
     }),
-    // This week's GB recipients (all students, for the weekly list)
-    prisma.goldenBulldog.findMany({
-      where: { schoolId, observedDate: { gte: monday } },
-      orderBy: { observedDate: "desc" },
-      include: {
-        student: { select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true, team: true } },
-        category: { select: { name: true } },
-      },
-    }),
-    // All-time GB counts for rankings
+    // All-time GB counts for rankings (counts only — never exposes other students' names)
     prisma.goldenBulldog.groupBy({
       by: ["studentId"],
       where: { schoolId },
@@ -161,39 +145,6 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
           </div>
         </div>
       )}
-
-      {/* This week's Golden Bulldog recipients */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b flex items-center gap-2">
-          <Image src="/golden-bulldog.png" alt="" width={22} height={22} />
-          <h2 className="font-bold">This Week&apos;s Golden Bulldogs</h2>
-        </div>
-        {weeklyGBs.length === 0 ? (
-          <p className="px-4 py-6 text-gray-400 text-sm text-center">No Golden Bulldogs awarded this week yet.</p>
-        ) : (
-          <ul className="divide-y">
-            {weeklyGBs.map((gb) => {
-              const teamColor = TEAM_COLORS[gb.student.team] ?? "#9ca3af";
-              const isMe = gb.student.id === studentId;
-              return (
-                <li key={gb.id} className={`flex items-center gap-3 px-4 py-2.5 ${isMe ? "bg-amber-50" : ""}`} style={{ borderLeft: `4px solid ${teamColor}` }}>
-                  <Image src="/golden-bulldog.png" alt="" width={28} height={28} className="shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">
-                      {gb.student.firstName} {gb.student.lastName}
-                      {isMe && <span className="ml-2 text-amber-600 font-bold text-xs">That&apos;s you!</span>}
-                    </p>
-                    <p className="text-xs text-gray-400">{gb.category.name} · Gr {gb.student.grade} · {gb.student.homeroom}</p>
-                  </div>
-                  <span className="text-xs text-gray-400 shrink-0">
-                    {new Date(gb.observedDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
 
     </div>
   );

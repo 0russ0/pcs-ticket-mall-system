@@ -7,6 +7,9 @@ export async function GET(req: Request) {
   if (!session?.user?.schoolId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.role === "student") {
+    return NextResponse.json({ error: "Not available to students" }, { status: 403 });
+  }
 
   const schoolId = session.user.schoolId;
   const { searchParams } = new URL(req.url);

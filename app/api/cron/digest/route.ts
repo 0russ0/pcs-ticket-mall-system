@@ -221,7 +221,7 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
   </div>
   <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">
   <p style="font-size:12px;color:#9ca3af;text-align:center;">
-    PCS Student Rewards · Sent automatically ·
+    PCS Bulldog Bank · Sent automatically ·
     <a href="https://pcs-ticket-mall-system.vercel.app/admin/orders" style="color:#6b7280;">View approvals</a>
   </p>
 </body></html>`;

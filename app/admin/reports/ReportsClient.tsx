@@ -62,14 +62,19 @@ type AwardRow = {
   homeroom: string; team: string; points: number; category: string;
   reason: string; awardedBy: string;
 };
+type PopularItemRow = {
+  rank: number; productId: number; name: string; category: string;
+  quantityPurchased: number; ordersCount: number; pointsSpent: number;
+};
 
-type Tab = "students" | "staff" | "bulldogs" | "awards";
+type Tab = "students" | "staff" | "bulldogs" | "awards" | "items";
 
 const TABS: { value: Tab; label: string; emoji: string }[] = [
   { value: "students", label: "Student Totals",    emoji: "🎓" },
   { value: "staff",    label: "Staff Activity",    emoji: "👩‍🏫" },
   { value: "bulldogs", label: "Golden Bulldogs",   emoji: "🐾" },
   { value: "awards",   label: "Points Log",        emoji: "⭐" },
+  { value: "items",    label: "Popular Items",     emoji: "🛍️" },
 ];
 
 // ── Sortable table header ─────────────────────────────────────────────────────
@@ -94,6 +99,7 @@ export default function ReportsClient() {
   const [staffData, setStaffData] = useState<{ rows: StaffRow[]; categories: string[] }>({ rows: [], categories: [] });
   const [bulldogData, setBulldogData] = useState<BulldogRow[]>([]);
   const [awardData, setAwardData] = useState<AwardRow[]>([]);
+  const [popularItemData, setPopularItemData] = useState<PopularItemRow[]>([]);
 
   const [sort, setSort] = useState<[string, "asc"|"desc"]>(["lastName", "asc"]);
 
@@ -113,9 +119,12 @@ export default function ReportsClient() {
       } else if (t === "bulldogs") {
         const data = await fetch(`/api/admin/reports/bulldogs${sinceParam}`).then((r) => r.json());
         setBulldogData(data);
-      } else {
+      } else if (t === "awards") {
         const data = await fetch(`/api/admin/reports/awards${sinceParam}`).then((r) => r.json());
         setAwardData(data);
+      } else {
+        const data = await fetch(`/api/admin/reports/popular-items${sinceParam}`).then((r) => r.json());
+        setPopularItemData(data);
       }
     } finally {
       setLoading(false);
@@ -166,7 +175,13 @@ export default function ReportsClient() {
     downloadCSV(`points-log-${period}.csv`, toCSV(headers, rows));
   }
 
-  const exportFn = { students: exportStudents, staff: exportStaff, bulldogs: exportBulldogs, awards: exportAwards }[tab];
+  function exportPopularItems() {
+    const headers = ["Rank","Item","Category","Units Purchased","Orders","Points Spent"];
+    const rows = popularItemData.map((r) => [r.rank, r.name, r.category, r.quantityPurchased, r.ordersCount, r.pointsSpent]);
+    downloadCSV(`popular-items-${period}.csv`, toCSV(headers, rows));
+  }
+
+  const exportFn = { students: exportStudents, staff: exportStaff, bulldogs: exportBulldogs, awards: exportAwards, items: exportPopularItems }[tab];
 
   // ── Summary stats ─────────────────────────────────────────────────────────────
   const summaryCards = {
@@ -191,6 +206,12 @@ export default function ReportsClient() {
       { label: "Total Points", value: awardData.reduce((s, r) => s + r.points, 0) },
       { label: "Unique Students", value: new Set(awardData.map((r) => r.studentName)).size },
     ],
+    items: [
+      { label: "Unique Items Sold", value: popularItemData.length },
+      { label: "Units Purchased", value: popularItemData.reduce((s, r) => s + r.quantityPurchased, 0) },
+      { label: "Orders", value: popularItemData.reduce((s, r) => s + r.ordersCount, 0) },
+      { label: "Points Spent", value: popularItemData.reduce((s, r) => s + r.pointsSpent, 0) },
+    ],
   }[tab];
 
   return (
@@ -200,7 +221,7 @@ export default function ReportsClient() {
         {TABS.map((t) => (
           <button
             key={t.value}
-            onClick={() => { setTab(t.value); setSort(["lastName", "asc"]); }}
+            onClick={() => { setTab(t.value); setSort(t.value === "items" ? ["quantityPurchased", "desc"] : ["lastName", "asc"]); }}
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap border transition-colors ${
               tab === t.value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
             }`}
@@ -392,6 +413,37 @@ export default function ReportsClient() {
             </tbody>
           </table>
           {awardData.length === 0 && <p className="text-center text-gray-400 py-8">No awards in this period.</p>}
+        </div>
+      )}
+
+      {/* ── Popular Items ── */}
+      {!loading && tab === "items" && (
+        <div className="overflow-x-auto rounded-xl border">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                {[
+                  ["rank","Rank"], ["name","Item"], ["category","Category"],
+                  ["quantityPurchased","Units Purchased"], ["ordersCount","Orders"], ["pointsSpent","Points Spent"],
+                ].map(([col, label]) => (
+                  <Th key={col} col={col} label={label} sort={sort} onSort={toggleSort} />
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y bg-white">
+              {(sortedRows(popularItemData as unknown as Record<string, unknown>[]) as unknown as PopularItemRow[]).map((r) => (
+                <tr key={r.productId} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 text-center font-bold text-gray-400">#{r.rank}</td>
+                  <td className="px-3 py-2 font-medium">{r.name}</td>
+                  <td className="px-3 py-2 text-xs capitalize">{r.category.replace("_", " ")}</td>
+                  <td className="px-3 py-2 text-right font-bold text-blue-600">{r.quantityPurchased}</td>
+                  <td className="px-3 py-2 text-right">{r.ordersCount}</td>
+                  <td className="px-3 py-2 text-right">{r.pointsSpent}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {popularItemData.length === 0 && <p className="text-center text-gray-400 py-8">No items purchased (picked up) in this period.</p>}
         </div>
       )}
     </div>

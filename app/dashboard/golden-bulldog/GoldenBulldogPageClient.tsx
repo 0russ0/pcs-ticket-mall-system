@@ -41,6 +41,8 @@ const PERIOD_LABELS: Record<Period, string> = {
   all: "All Time",
 };
 
+const ALL_GRADES = ["K", "1", "2", "3", "4", "5", "6", "7", "8"];
+
 export default function GoldenBulldogPageClient({ role }: { role: string }) {
   const [showModal, setShowModal] = useState(false);
   const [showWheel, setShowWheel] = useState(false);
@@ -62,11 +64,10 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
 
   // Unique values for filter dropdowns
   const filterOptions = useMemo(() => {
-    if (!awards) return { grades: [], homerooms: [], teams: [] };
-    const grades = [...new Set(awards.map((a) => a.student.grade))].filter(Boolean).sort();
+    if (!awards) return { grades: ALL_GRADES, homerooms: [], teams: [] };
     const homerooms = [...new Set(awards.map((a) => a.student.homeroom))].filter(Boolean).sort();
     const teams = [...new Set(awards.map((a) => a.student.team))].filter(Boolean).sort();
-    return { grades, homerooms, teams };
+    return { grades: ALL_GRADES, homerooms, teams };
   }, [awards]);
 
   const filteredAwards = useMemo(() => {
@@ -212,22 +213,24 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
         </div>
       )}
 
-      {/* GB Rankings — visible to all roles */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 flex items-center gap-2 border-b">
-          <Image src="/golden-bulldog.png" alt="" width={24} height={24} />
-          <h2 className="font-bold text-lg">Golden Bulldog Rankings</h2>
-          <span className="text-xs text-gray-400 ml-1">All Time</span>
+      {/* GB Rankings — hidden from students so they can't see other students' totals */}
+      {role !== "student" && (
+        <div className="card p-0 overflow-hidden">
+          <div className="px-4 py-3 flex items-center gap-2 border-b">
+            <Image src="/golden-bulldog.png" alt="" width={24} height={24} />
+            <h2 className="font-bold text-lg">Golden Bulldog Rankings</h2>
+            <span className="text-xs text-gray-400 ml-1">All Time</span>
+          </div>
+          <GBRankings refreshKey={refreshKey} />
         </div>
-        <GBRankings refreshKey={refreshKey} />
-      </div>
+      )}
 
-      {/* Recent Awards */}
+      {/* Recent Awards — API self-scopes to the student's own awards when role is student */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-3 border-b">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
             <h2 className="font-bold text-lg">
-              Recent Awards {awards ? `(${filteredAwards.length})` : ""}
+              {role === "student" ? "My Golden Bulldogs" : "Recent Awards"} {awards ? `(${filteredAwards.length})` : ""}
             </h2>
             {role === "admin" && (
               <div className="flex gap-2">

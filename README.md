@@ -1,4 +1,4 @@
-# Student Rewards System
+# Bulldog Bank
 
 A multi-school student points & rewards platform: students earn points from staff for
 behavior/academics/attendance/citizenship and redeem them at a school "mall". Includes

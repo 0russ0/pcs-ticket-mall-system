@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Student Rewards",
+  title: "Bulldog Bank",
   description: "Student points, leaderboards, and school store",
 };
 
