@@ -2,24 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { refreshLeaderboard } from "@/lib/leaderboard";
+import { buildCanonicalStudentRows, buildTeacherMap, mapHouseToTeam, parseTeacherName } from "@/lib/powerschoolCsv";
 import Papa from "papaparse";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
-
-const HOUSE_MAP: Record<string, string> = {
-  "rachel carson house": "Rachel Carson House",
-  "clemente house": "Clemente House",
-  "hot metal house": "Hot Metal House",
-  "liberty house": "Liberty House",
-  "no house": "Unassigned",
-  "": "Unassigned",
-};
-
-function parseTeacherName(lastfirst: string): { firstName: string; lastName: string } {
-  const [last = "", first = ""] = lastfirst.split(",").map((s) => s.trim());
-  return { firstName: first, lastName: last };
-}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -44,25 +31,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Could not parse CSV", details: parsed.errors }, { status: 400 });
     }
 
-    // Build per-student maps: prefer the homeroom course row, fall back to first row seen
-    const homeroomRows = new Map<string, Record<string, string>>();
-    const firstRows = new Map<string, Record<string, string>>();
-
-    for (const row of parsed.data) {
-      const sid = row["StudentNumber"]?.trim();
-      if (!sid) continue;
-      if (!firstRows.has(sid)) firstRows.set(sid, row);
-      if (row["CourseName"]?.trim().toLowerCase().includes("homeroom")) homeroomRows.set(sid, row);
-    }
-
-    // Collect unique teachers from homeroom rows (or all rows as fallback)
-    const teacherMap = new Map<string, { firstName: string; lastName: string }>();
-    for (const row of [...homeroomRows.values(), ...firstRows.values()]) {
-      const email = row["TeacherEmail"]?.trim().toLowerCase();
-      if (email && !teacherMap.has(email)) {
-        teacherMap.set(email, parseTeacherName(row["TeacherLastfirst"] ?? ""));
-      }
-    }
+    // Build per-student canonical rows: prefer the homeroom course row, fall back to first row seen
+    const canonicalRows = buildCanonicalStudentRows(parsed.data);
+    const teacherMap = buildTeacherMap(parsed.data);
 
     // Build student records
     const warnings: string[] = [];
@@ -76,8 +47,7 @@ export async function POST(req: Request) {
       googleEmail: string | null;
     }[] = [];
 
-    for (const [sid, firstRow] of firstRows) {
-      const canonical = homeroomRows.get(sid) ?? firstRow;
+    for (const [sid, canonical] of canonicalRows) {
       const firstName = canonical["StudentFirstName"]?.trim();
       const lastName = canonical["StudentLastName"]?.trim();
       const grade = canonical["Grade"]?.trim();
@@ -90,7 +60,7 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const team = HOUSE_MAP[rawHouse.toLowerCase()] ?? "Unassigned";
+      const team = mapHouseToTeam(rawHouse);
       if (team === "Unassigned" && rawHouse.toLowerCase() !== "no house" && rawHouse !== "") {
         warnings.push(`Student ${sid} (${firstName} ${lastName}): unknown house "${rawHouse}" — imported as Unassigned`);
       }

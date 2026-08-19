@@ -60,9 +60,9 @@ export default function StudentUploadPage() {
       <h1 className="text-2xl font-bold">Bulk Upload Students</h1>
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
-          CSV columns: <code>student_id,first_name,last_name,grade,homeroom,team,initial_points</code>.
-          Team must be exactly one of: Rachel Carson House, Clemente House, Hot Metal House, Liberty House.
-          <code>initial_points</code> is optional (defaults to 0).
+          CSV columns (PowerSchool export): <code>StudentNumber, StudentFirstName, StudentLastName, StudentEmail, TeacherLastfirst, Grade, House, TeacherEmail, CourseName</code>.
+          One row per student per course is fine — the homeroom row (CourseName containing &ldquo;homeroom&rdquo;) is used automatically.
+          <code>StudentEmail</code> is optional but required for that student to log in. All new students start at 0 points.
         </p>
         <input type="file" accept=".csv" onChange={handleFile} />
         <div className="flex items-center gap-2">

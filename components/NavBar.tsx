@@ -43,6 +43,7 @@ const ADMIN_LINKS: NavItem[] = [
   {
     label: "Admin",
     children: [
+      { href: "/admin/students", label: "Manage Students" },
       { href: "/admin/staff", label: "Manage Staff" },
       { href: "/admin/settings", label: "Settings" },
     ],

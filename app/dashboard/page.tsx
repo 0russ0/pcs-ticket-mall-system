@@ -317,8 +317,7 @@ async function AdminDashboard({ schoolId }: { schoolId: number }) {
           <h2 className="text-lg font-bold mb-2">Quick Links</h2>
           <Link href="/admin/orders" className="btn btn-secondary w-full">Approvals Queue</Link>
           <Link href="/admin/products" className="btn btn-secondary w-full">Manage Store</Link>
-          <Link href="/admin/students/upload" className="btn btn-secondary w-full">Upload Students</Link>
-          <Link href="/admin/classes/upload" className="btn btn-secondary w-full">Import Class Rosters</Link>
+          <Link href="/admin/students" className="btn btn-secondary w-full">Manage Students</Link>
           <Link href="/admin/staff" className="btn btn-secondary w-full">Manage Staff</Link>
           <Link href="/admin/settings" className="btn btn-secondary w-full">Settings</Link>
           <Link href="/admin/year-reset" className="btn w-full bg-red-50 text-red-700 border border-red-200 hover:bg-red-100">New Year Reset</Link>
