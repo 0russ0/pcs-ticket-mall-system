@@ -10,6 +10,7 @@ datasource db {
 enum StaffRole {
   admin
   teacher
+  power_user
 }
 
 enum OrderStatus {

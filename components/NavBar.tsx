@@ -20,6 +20,12 @@ const TEACHER_LINKS: NavItem[] = [
   { href: "/leaderboards", label: "Leaderboards" },
 ];
 
+const POWER_USER_LINKS: NavItem[] = [
+  { href: "/dashboard", label: "Home" },
+  { href: "/house-points", label: "House Points" },
+  { href: "/leaderboards", label: "Leaderboards" },
+];
+
 const ADMIN_LINKS: NavItem[] = [
   { href: "/dashboard", label: "Home" },
   {
@@ -29,6 +35,7 @@ const ADMIN_LINKS: NavItem[] = [
       { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
       { href: "/admin/bulk-points", label: "Bulk Award" },
       { href: "/admin/campaigns", label: "Campaigns" },
+      { href: "/house-points", label: "House Points" },
     ],
   },
   {
@@ -56,7 +63,10 @@ export default async function NavBar() {
 
   const role = session.user.role;
   const items =
-    role === "admin" ? ADMIN_LINKS : role === "teacher" ? TEACHER_LINKS : STUDENT_LINKS;
+    role === "admin" ? ADMIN_LINKS
+    : role === "teacher" ? TEACHER_LINKS
+    : role === "power_user" ? POWER_USER_LINKS
+    : STUDENT_LINKS;
 
   return (
     <header className="sticky top-0 z-20 bg-white border-b border-gray-200">

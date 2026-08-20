@@ -20,11 +20,13 @@ export default async function LeaderboardsPage({
   const schoolId = session!.user.schoolId!;
   const role = session!.user.role;
   const isStudent = role === "student";
+  // Students and power users (house-points only) may never see individual
+  // student totals — just the house/team leaderboard and the (also
+  // house-aggregated) Challenges tab.
+  const isHouseOnly = isStudent || role === "power_user";
 
   const { type: typeParam = "school_wide", homeroom: homeroomParam, band = "all" } = await searchParams;
-  // Students may only ever see the house/team leaderboard and the (also
-  // house-aggregated) Challenges tab — never another student's individual points.
-  const type = isStudent && !["team", "challenges"].includes(typeParam) ? "team" : typeParam;
+  const type = isHouseOnly && !["team", "challenges"].includes(typeParam) ? "team" : typeParam;
 
   const me =
     session!.user.role === "student"
@@ -52,7 +54,7 @@ export default async function LeaderboardsPage({
       )}
 
       <div className="flex gap-2 overflow-x-auto">
-        {!isStudent && (
+        {!isHouseOnly && (
           <>
             <TabLink href={`/leaderboards?type=school_wide&band=${band}`} active={type === "school_wide"}>School-Wide</TabLink>
             <TabLink href={`/leaderboards?type=homeroom&band=${band}`} active={type === "homeroom"}>Homeroom</TabLink>
@@ -62,8 +64,8 @@ export default async function LeaderboardsPage({
         <TabLink href={`/leaderboards?type=challenges&band=${band}`} active={type === "challenges"}>Challenges</TabLink>
       </div>
 
-      {type === "school_wide" && !isStudent && <SchoolWide schoolId={schoolId} me={me} grades={grades} />}
-      {type === "homeroom" && !isStudent && (
+      {type === "school_wide" && !isHouseOnly && <SchoolWide schoolId={schoolId} me={me} grades={grades} />}
+      {type === "homeroom" && !isHouseOnly && (
         <Homeroom schoolId={schoolId} me={me} homeroomParam={homeroomParam} grades={grades} band={band} />
       )}
       {type === "team" && <Teams schoolId={schoolId} myTeam={me?.team} grades={grades} />}

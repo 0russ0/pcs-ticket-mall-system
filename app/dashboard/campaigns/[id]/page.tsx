@@ -17,13 +17,15 @@ function audienceSummary(filter: unknown): string {
 
 export default async function TeacherCampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     redirect("/dashboard");
   }
 
   const { id } = await params;
   const campaignId = Number(id);
   const schoolId = session.user.schoolId!;
+  const isPowerUser = session.user.role === "power_user";
+  const backHref = isPowerUser ? "/house-points" : "/dashboard/campaigns";
 
   const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!campaign) notFound();
@@ -32,6 +34,13 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
     const scope = await getTeacherScope(schoolId, session.user.staffId!);
     if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) redirect("/dashboard/campaigns");
   }
+  if (isPowerUser && (campaign.audienceFilter as { type?: string } | null)?.type !== "houses") {
+    redirect("/house-points");
+  }
+
+  // Power users never affect personal totals, even if this campaign's own
+  // addToTotal is true for other staff.
+  const effectiveAddToTotal = campaign.addToTotal && !isPowerUser;
 
   const now = new Date();
   const isActive = campaign.isActive && (!campaign.endDate || campaign.endDate >= now);
@@ -60,7 +69,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard/campaigns" className="text-sm text-gray-400 hover:text-blue-600">← Campaigns</Link>
+        <Link href={backHref} className="text-sm text-gray-400 hover:text-blue-600">← {isPowerUser ? "House Points" : "Challenges"}</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
           <div>
             <h1 className="text-2xl font-bold">{campaign.name}</h1>
@@ -90,7 +99,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
           </div>
           <div>
             <dt className="text-gray-400 text-xs uppercase tracking-wide">Points</dt>
-            <dd className="font-medium mt-0.5">{campaign.addToTotal ? "Adds to student totals" : "Standalone"}</dd>
+            <dd className="font-medium mt-0.5">{effectiveAddToTotal ? "Adds to student totals" : "Standalone (house points only)"}</dd>
           </div>
         </dl>
       </div>
@@ -124,7 +133,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
           <CampaignAwardPanel
             campaignId={campaign.id}
             students={allStudents}
-            addToTotal={campaign.addToTotal}
+            addToTotal={effectiveAddToTotal}
           />
         )}
       </div>

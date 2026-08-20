@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import CancelOrderButton from "./CancelOrderButton";
 
@@ -15,10 +16,11 @@ export default async function OrdersPage({
   searchParams: Promise<{ submitted?: string }>;
 }) {
   const session = await auth();
+  if (session?.user?.role !== "student") redirect("/dashboard");
   const { submitted } = await searchParams;
 
   const orders = await prisma.order.findMany({
-    where: { studentId: session!.user.studentId! },
+    where: { studentId: session.user.studentId! },
     include: { items: { include: { product: true } } },
     orderBy: { submittedAt: "desc" },
   });

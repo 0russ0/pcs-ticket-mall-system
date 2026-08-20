@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { TEAMS } from "@/lib/leaderboard";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !["admin", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const schoolId = session.user.schoolId!;
@@ -13,15 +14,22 @@ export async function GET() {
     orderBy: { startDate: "desc" },
     include: { _count: { select: { awards: true } } },
   });
-  return NextResponse.json(campaigns);
+
+  // Power users only manage house-scoped, points-don't-count-elsewhere challenges.
+  const visible = session.user.role === "power_user"
+    ? campaigns.filter((c) => (c.audienceFilter as { type?: string } | null)?.type === "houses")
+    : campaigns;
+
+  return NextResponse.json(visible);
 }
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !["admin", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const schoolId = session.user.schoolId!;
+  const isPowerUser = session.user.role === "power_user";
   const body = await req.json();
   const { name, description, startDate, endDate, durationType, audienceFilter, addToTotal } = body;
 
@@ -37,8 +45,10 @@ export async function POST(req: Request) {
       startDate: new Date(startDate),
       endDate: endDate ? new Date(endDate) : null,
       durationType,
-      audienceFilter: audienceFilter ?? null,
-      addToTotal: addToTotal !== false,
+      // Power users can only ever create house-scoped, standalone challenges —
+      // enforced server-side regardless of what the client sends.
+      audienceFilter: isPowerUser ? { type: "houses", values: [...TEAMS] } : (audienceFilter ?? null),
+      addToTotal: isPowerUser ? false : addToTotal !== false,
     },
   });
   return NextResponse.json(campaign, { status: 201 });

@@ -5,7 +5,7 @@ import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeSco
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -13,6 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const campaignId = Number(id);
   const schoolId = session.user.schoolId!;
   const staffId = session.user.staffId;
+  const isPowerUser = session.user.role === "power_user";
 
   if (!staffId) return NextResponse.json({ error: "Staff ID missing from session" }, { status: 400 });
 
@@ -24,6 +25,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) {
       return NextResponse.json({ error: "This challenge isn't available to your classes" }, { status: 403 });
     }
+  }
+
+  // Power users are scoped to house challenges only, and their contributions
+  // never count toward personal totals — even if this campaign's own
+  // addToTotal setting is true for other staff.
+  if (isPowerUser && (campaign.audienceFilter as { type?: string } | null)?.type !== "houses") {
+    return NextResponse.json({ error: "This challenge isn't available to you" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -58,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       })),
     });
 
-    if (campaign.addToTotal) {
+    if (campaign.addToTotal && !isPowerUser) {
       // Also create PointAward rows and increment student totals
       const catId = categoryId ?? await tx.pointCategory
         .findFirst({ where: { schoolId }, orderBy: { isActive: "desc" }, select: { id: true } })

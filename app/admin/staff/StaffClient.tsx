@@ -82,6 +82,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Staff[] })
         </div>
         <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
           <option value="teacher">Teacher</option>
+          <option value="power_user">Power User (house points only)</option>
           <option value="admin">Admin</option>
         </select>
         <button type="submit" disabled={submitting} className="btn btn-primary w-full">
@@ -108,6 +109,7 @@ export default function StaffClient({ initialStaff }: { initialStaff: Staff[] })
                 <td className="py-2">
                   <select className="input py-1" value={s.role} onChange={(e) => handleRoleChange(s.id, e.target.value)}>
                     <option value="teacher">Teacher</option>
+                    <option value="power_user">Power User</option>
                     <option value="admin">Admin</option>
                   </select>
                 </td>

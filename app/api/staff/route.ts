@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Email must be a @${allowedDomain} address` }, { status: 400 });
   }
 
-  if (!["admin", "teacher"].includes(role)) {
+  if (!["admin", "teacher", "power_user"].includes(role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
 

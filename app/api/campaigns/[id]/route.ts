@@ -41,7 +41,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !["admin", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -52,6 +52,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const existing = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (session.user.role === "power_user" && (existing.audienceFilter as { type?: string } | null)?.type !== "houses") {
+    return NextResponse.json({ error: "This challenge isn't available to you" }, { status: 403 });
+  }
 
   const campaign = await prisma.campaign.update({
     where: { id: campaignId },
