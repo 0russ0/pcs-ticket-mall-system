@@ -7,7 +7,8 @@ import Papa from "papaparse";
 export default function ProductUploadPage() {
   const [csvText, setCsvText] = useState("");
   const [preview, setPreview] = useState<Record<string, string>[]>([]);
-  const [result, setResult] = useState<{ created: number; errors: string[] } | null>(null);
+  const [clearExisting, setClearExisting] = useState(false);
+  const [result, setResult] = useState<{ created: number; deactivated: number; errors: string[] } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
@@ -26,12 +27,15 @@ export default function ProductUploadPage() {
   }
 
   async function handleUpload() {
+    if (clearExisting && !window.confirm("This will deactivate ALL current store items before importing the new ones. Continue?")) {
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/products/bulk-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: csvText }),
+        body: JSON.stringify({ csv: csvText, clearExisting }),
       });
       const data = await res.json();
       setResult(data);
@@ -46,12 +50,19 @@ export default function ProductUploadPage() {
       <h1 className="text-2xl font-bold">Bulk Upload Products</h1>
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
-          CSV columns: <code>name,description,points_cost,category,inventory_limit,image_url</code>.
-          Category must be one of <code>physical_item</code>, <code>experience</code>, <code>privilege</code>.
+          CSV columns (any reasonable header naming works — e.g. <code>Name (REQUIRED)</code> or <code>name</code>):
+          {" "}<code>name, description, points_cost, category, inventory_limit, image_url</code>.
+          Category must be <code>Physical Item</code>, <code>Experience</code>, or <code>Privilege</code> (case/spacing flexible).
           Use <code>unlimited</code> (or leave blank) for no inventory limit.
-          <code>image_url</code> is optional — paste any public image link (Amazon, etc.).
+          <code>image_url</code> is optional — Amazon links, Google Drive share links, and other public image URLs all work.
         </p>
         <input type="file" accept=".csv" onChange={handleFile} />
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="clear" checked={clearExisting} onChange={(e) => setClearExisting(e.target.checked)} className="h-5 w-5" />
+          <label htmlFor="clear" className="text-sm text-red-600">
+            Deactivate all current store items before import (replace the whole store)
+          </label>
+        </div>
       </div>
 
       {preview.length > 0 && (
@@ -83,7 +94,10 @@ export default function ProductUploadPage() {
 
       {result && (
         <div className="card space-y-2">
-          <p className="font-bold text-green-700">{result.created} products created.</p>
+          <p className="font-bold text-green-700">
+            {result.created} products created.
+            {result.deactivated > 0 && ` ${result.deactivated} previous items deactivated.`}
+          </p>
           {result.errors.length > 0 && (
             <div>
               <p className="font-bold text-red-700">{result.errors.length} errors:</p>
