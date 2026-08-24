@@ -51,19 +51,16 @@ export default function ClassUploadPage() {
 
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
-          Upload the class enrollment CSV exported from PowerSchool. Import students first if you haven&apos;t already.
+          Upload the &ldquo;Section Enrollment Report&rdquo; CSV exported from PowerSchool. Import students first if you haven&apos;t already.
         </p>
         <div className="bg-gray-50 rounded-lg p-3 text-xs font-mono text-gray-700 overflow-x-auto">
-          student_id,class_name,teacher_email,period<br />
-          10001,Reading,wilson@providentcharterschool.org,2<br />
-          10001,Science,garcia@providentcharterschool.org,4<br />
-          10002,Reading,wilson@providentcharterschool.org,2
+          Course Name,Lastfirst,Teacher Email,Stud Lastfirst,First Name,Last Name,Name,Abbreviation,Expression,Grade,Course Number
         </div>
         <ul className="text-xs text-gray-500 list-disc pl-5 space-y-1">
-          <li><strong>student_id</strong> — PowerSchool student number (must already exist in system)</li>
-          <li><strong>class_name</strong> — course name (e.g. Reading, Science, Homeroom)</li>
-          <li><strong>teacher_email</strong> — full PCS Google email; teacher must have logged in at least once</li>
-          <li><strong>period</strong> — optional; helps distinguish same course taught twice a day</li>
+          <li><strong>First Name / Last Name / Grade</strong> — matches against existing students by name (this export has no student ID). Ambiguous name matches are skipped and listed as errors.</li>
+          <li><strong>Course Name</strong> — the class (e.g. 7 MATH)</li>
+          <li><strong>Teacher Email</strong> — if this email is new to the system, a teacher account is created automatically so they can sign in right away</li>
+          <li><strong>Abbreviation</strong> — section code, used to distinguish two sections of the same course taught by the same teacher</li>
         </ul>
 
         <input type="file" accept=".csv" onChange={handleFile} />
