@@ -28,33 +28,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
-      // Re-derive role/school/staff on every request (not just initial sign-in)
-      // so a role change in the DB takes effect on the user's next page load
-      // instead of requiring them to sign out and back in.
-      const email = user?.email ?? (token.email as string | undefined);
-      if (email) {
-        token.email = email;
+      if (user?.email) {
+        token.email = user.email;
 
         const staff = await prisma.staff.findUnique({
-          where: { googleEmail: email },
+          where: { googleEmail: user.email },
         });
 
         if (staff) {
           token.role = staff.role;
           token.schoolId = staff.schoolId;
           token.staffId = staff.id;
-          token.studentId = undefined;
-          token.name = `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() || user?.name || token.name;
+          token.name = `${staff.firstName ?? ""} ${staff.lastName ?? ""}`.trim() || user.name;
         } else {
           const student = await prisma.student.findUnique({
-            where: { googleEmail: email },
+            where: { googleEmail: user.email },
           });
 
           if (student) {
             token.role = "student";
             token.schoolId = student.schoolId;
             token.studentId = student.id;
-            token.staffId = undefined;
             token.name = `${student.firstName} ${student.lastName}`;
           } else {
             token.role = "unknown";
