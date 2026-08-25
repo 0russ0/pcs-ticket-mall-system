@@ -26,6 +26,8 @@ export default function HousePointsAwardForm({
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [lastAwardIds, setLastAwardIds] = useState<number[] | null>(null);
+  const [undoing, setUndoing] = useState(false);
 
   const studentMatches = studentSearch.length > 1
     ? students.filter((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearch.toLowerCase())).slice(0, 8)
@@ -44,6 +46,7 @@ export default function HousePointsAwardForm({
     e.preventDefault();
     if (!targetValue || points < 1) return;
     setMessage(null);
+    setLastAwardIds(null);
     setSubmitting(true);
     try {
       const res = await fetch("/api/house-points/award", {
@@ -57,6 +60,7 @@ export default function HousePointsAwardForm({
         return;
       }
       setMessage({ type: "success", text: "House points awarded!" });
+      setLastAwardIds(data.houseBonusIds ?? null);
       setReason("");
       router.refresh();
     } finally {
@@ -64,13 +68,45 @@ export default function HousePointsAwardForm({
     }
   }
 
+  async function handleUndo() {
+    if (!lastAwardIds) return;
+    setUndoing(true);
+    try {
+      const res = await fetch("/api/house-points/undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: lastAwardIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "Could not undo." });
+        return;
+      }
+      setMessage({ type: "success", text: "Undone — points reversed." });
+      setLastAwardIds(null);
+      router.refresh();
+    } finally {
+      setUndoing(false);
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="card space-y-4">
       <h2 className="font-bold text-lg">Award House Points</h2>
       {message && (
-        <p className={`text-sm rounded-lg p-3 ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
-          {message.text}
-        </p>
+        <div className={`text-sm rounded-lg p-3 flex items-center justify-between gap-3 ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`}>
+          <span>{message.text}</span>
+          {lastAwardIds && (
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={undoing}
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-red-300 text-red-600 hover:bg-red-50"
+            >
+              {undoing ? "Undoing…" : "Undo"}
+            </button>
+          )}
+        </div>
       )}
 
       <div>

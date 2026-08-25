@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TEAMS, getTeamSummaries } from "@/lib/leaderboard";
 import HousePointsAwardForm from "./HousePointsAwardForm";
 import WheelSection from "./WheelSection";
+import HouseBarChart from "@/components/HouseBarChart";
 
 export default async function HousePointsPage() {
   const session = await auth();
@@ -59,17 +60,15 @@ export default async function HousePointsPage() {
       </div>
 
       {/* Current standings */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {teamSummaries.map((t, i) => (
-          <div key={t.team} className="card flex items-center gap-3" style={{ borderLeft: `6px solid ${t.color}` }}>
-            <div className="text-xl font-bold text-gray-400 w-6">#{i + 1}</div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{t.team}</p>
-              <p className="text-xs text-gray-500">{t.memberCount} members</p>
-            </div>
-            <div className="text-lg font-bold shrink-0">{t.totalPoints}</div>
-          </div>
-        ))}
+      <div className="card">
+        <HouseBarChart
+          rows={teamSummaries.map((t) => ({
+            team: t.team,
+            points: t.totalPoints,
+            color: t.color,
+            subtitle: `${t.memberCount} members`,
+          }))}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -113,7 +112,6 @@ export default async function HousePointsPage() {
           {/* Spin the wheel */}
           <div className="card space-y-3">
             <h2 className="font-bold text-lg">🎡 Spin for a House</h2>
-            <p className="text-xs text-gray-500">Pick a house challenge and spin — each house's chance is weighted by its points in that challenge.</p>
             <WheelSection />
           </div>
         </div>

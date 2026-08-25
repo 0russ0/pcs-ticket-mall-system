@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { TEAM_COLORS, getTeamSummaries } from "@/lib/leaderboard";
 import TeacherRoster from "./TeacherRoster";
+import HouseBarChart from "@/components/HouseBarChart";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -207,17 +208,15 @@ async function TeacherDashboard({ schoolId, isPowerUser = false }: { schoolId: n
             You have every teacher capability, plus House Points: bulk-award points to a house/grade/homeroom and create house-only challenges — those never affect a student&apos;s personal balance.
           </p>
           {teamSummaries && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {teamSummaries.map((t, i) => (
-                <div key={t.team} className="card flex items-center gap-3" style={{ borderLeft: `6px solid ${t.color}` }}>
-                  <div className="text-xl font-bold text-gray-400 w-6">#{i + 1}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{t.team}</p>
-                    <p className="text-xs text-gray-500">{t.memberCount} members</p>
-                  </div>
-                  <div className="text-lg font-bold shrink-0">{t.totalPoints}</div>
-                </div>
-              ))}
+            <div className="card">
+              <HouseBarChart
+                rows={teamSummaries.map((t) => ({
+                  team: t.team,
+                  points: t.totalPoints,
+                  color: t.color,
+                  subtitle: `${t.memberCount} members`,
+                }))}
+              />
             </div>
           )}
         </>

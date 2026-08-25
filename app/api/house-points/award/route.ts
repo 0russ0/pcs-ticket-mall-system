@@ -31,10 +31,10 @@ export async function POST(req: Request) {
     if (!(TEAMS as readonly string[]).includes(targetValue)) {
       return NextResponse.json({ error: "Invalid house" }, { status: 400 });
     }
-    await prisma.houseBonus.create({
+    const bonus = await prisma.houseBonus.create({
       data: { schoolId, staffId, house: targetValue, points: pointsInt, reason: reason?.trim() || null },
     });
-    return NextResponse.json({ success: true, house: targetValue, points: pointsInt });
+    return NextResponse.json({ success: true, house: targetValue, points: pointsInt, houseBonusIds: [bonus.id] });
   }
 
   // Student / grade / homeroom targets: resolve the affected students, then
@@ -60,15 +60,26 @@ export async function POST(req: Request) {
 
   const targetLabel = targetType === "student" ? "1 student" : `${students.length} student${students.length !== 1 ? "s" : ""} (${targetType} ${targetValue})`;
 
-  await prisma.houseBonus.createMany({
-    data: [...perHouseCount.entries()].map(([house, count]) => ({
-      schoolId,
-      staffId,
-      house,
-      points: pointsInt * count,
-      reason: `${reason?.trim() ? `${reason.trim()} — ` : ""}${pointsInt} pts × ${targetLabel}`,
-    })),
-  });
+  // Individual creates (rather than createMany) so we can hand back the IDs
+  // for an immediate "Undo" action.
+  const bonuses = await prisma.$transaction(
+    [...perHouseCount.entries()].map(([house, count]) =>
+      prisma.houseBonus.create({
+        data: {
+          schoolId,
+          staffId,
+          house,
+          points: pointsInt * count,
+          reason: `${reason?.trim() ? `${reason.trim()} — ` : ""}${pointsInt} pts × ${targetLabel}`,
+        },
+      })
+    )
+  );
 
-  return NextResponse.json({ success: true, studentsAffected: students.length, houses: [...perHouseCount.keys()] });
+  return NextResponse.json({
+    success: true,
+    studentsAffected: students.length,
+    houses: [...perHouseCount.keys()],
+    houseBonusIds: bonuses.map((b) => b.id),
+  });
 }

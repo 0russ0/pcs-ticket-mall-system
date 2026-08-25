@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { TEAMS, TEAM_COLORS, getTeamSummaries, getHomeroomSummaries } from "@/lib/leaderboard";
 import Link from "next/link";
 import HomeroomSelect from "./HomeroomSelect";
+import HouseBarChart from "@/components/HouseBarChart";
 
 type SearchParams = { type?: string; homeroom?: string; band?: string };
 
@@ -186,17 +187,16 @@ async function Homeroom({ schoolId, me, homeroomParam, grades, band }: {
 async function Teams({ schoolId, myTeam, grades }: { schoolId: number; myTeam?: string; grades: string[] | null }) {
   const teams = await getTeamSummaries(schoolId, grades ?? undefined);
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {teams.map((t, i) => (
-        <div key={t.team} className="card flex items-center gap-3" style={{ borderLeft: `6px solid ${t.color}` }}>
-          <div className="text-2xl font-bold text-gray-400 w-8">#{i + 1}</div>
-          <div className="flex-1">
-            <p className="font-bold">{t.team} {myTeam === t.team && <span className="badge bg-blue-100 text-blue-800 ml-1">My Team</span>}</p>
-            <p className="text-sm text-gray-500">{t.memberCount} members &middot; avg {t.avgPoints} pts</p>
-          </div>
-          <div className="text-xl font-bold">{t.totalPoints}</div>
-        </div>
-      ))}
+    <div className="card">
+      <HouseBarChart
+        myTeam={myTeam}
+        rows={teams.map((t) => ({
+          team: t.team,
+          points: t.totalPoints,
+          color: t.color,
+          subtitle: `${t.memberCount} members · avg ${t.avgPoints}`,
+        }))}
+      />
     </div>
   );
 }
@@ -252,22 +252,10 @@ async function Challenges({ schoolId, myTeam }: { schoolId: number; myTeam?: str
             <p className="font-bold text-lg">{campaign.name}</p>
             {campaign.description && <p className="text-sm text-gray-500">{campaign.description}</p>}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ranked.map((r, i) => {
-              const color = TEAM_COLORS[r.team] || "#9ca3af";
-              return (
-                <div key={r.team} className="flex items-center gap-3 rounded-lg border p-3" style={{ borderLeft: `6px solid ${color}` }}>
-                  <div className="text-xl font-bold text-gray-400 w-7">#{i + 1}</div>
-                  <div className="flex-1">
-                    <p className="font-semibold">
-                      {r.team} {myTeam === r.team && <span className="badge bg-blue-100 text-blue-800 ml-1">My Team</span>}
-                    </p>
-                  </div>
-                  <div className="text-lg font-bold">{r.points}</div>
-                </div>
-              );
-            })}
-          </div>
+          <HouseBarChart
+            myTeam={myTeam}
+            rows={ranked.map((r) => ({ team: r.team, points: r.points, color: TEAM_COLORS[r.team] || "#9ca3af" }))}
+          />
         </div>
       ))}
     </div>
