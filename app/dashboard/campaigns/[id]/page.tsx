@@ -25,22 +25,17 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
   const campaignId = Number(id);
   const schoolId = session.user.schoolId!;
   const isPowerUser = session.user.role === "power_user";
-  const backHref = isPowerUser ? "/house-points" : "/dashboard/campaigns";
+  const backHref = "/dashboard/campaigns";
 
   const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!campaign) notFound();
 
-  if (session.user.role === "teacher") {
+  if (session.user.role === "teacher" || isPowerUser) {
     const scope = await getTeacherScope(schoolId, session.user.staffId!);
     if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) redirect("/dashboard/campaigns");
   }
-  if (isPowerUser && (campaign.audienceFilter as { type?: string } | null)?.type !== "houses") {
-    redirect("/house-points");
-  }
 
-  // Power users never affect personal totals, even if this campaign's own
-  // addToTotal is true for other staff.
-  const effectiveAddToTotal = campaign.addToTotal && !isPowerUser;
+  const effectiveAddToTotal = campaign.addToTotal;
 
   const now = new Date();
   const isActive = campaign.isActive && (!campaign.endDate || campaign.endDate >= now);
@@ -69,7 +64,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
   return (
     <div className="space-y-6">
       <div>
-        <Link href={backHref} className="text-sm text-gray-400 hover:text-blue-600">← {isPowerUser ? "House Points" : "Challenges"}</Link>
+        <Link href={backHref} className="text-sm text-gray-400 hover:text-blue-600">← Challenges</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
           <div>
             <h1 className="text-2xl font-bold">{campaign.name}</h1>
@@ -99,7 +94,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
           </div>
           <div>
             <dt className="text-gray-400 text-xs uppercase tracking-wide">Points</dt>
-            <dd className="font-medium mt-0.5">{effectiveAddToTotal ? "Adds to student totals" : "Standalone (house points only)"}</dd>
+            <dd className="font-medium mt-0.5">{effectiveAddToTotal ? "Adds to student totals" : "Standalone"}</dd>
           </div>
         </dl>
       </div>

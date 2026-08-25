@@ -45,7 +45,7 @@ export async function GET() {
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 
-  if (isAdmin || session.user.role === "teacher") {
+  if (isAdmin || ["teacher", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json(products);
   }
 

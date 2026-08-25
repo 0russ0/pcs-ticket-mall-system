@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

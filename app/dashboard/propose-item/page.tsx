@@ -5,7 +5,7 @@ import ProposeItemForm from "./ProposeItemForm";
 
 export default async function ProposeItemPage() {
   const session = await auth();
-  if (!session?.user || !["teacher", "admin"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["teacher", "admin", "power_user"].includes(session.user.role ?? "")) {
     redirect("/dashboard");
   }
 

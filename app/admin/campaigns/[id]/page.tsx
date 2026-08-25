@@ -16,7 +16,7 @@ function audienceSummary(filter: unknown): string {
 
 export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) redirect("/dashboard");
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) redirect("/dashboard");
 
   const { id } = await params;
   const campaignId = Number(id);

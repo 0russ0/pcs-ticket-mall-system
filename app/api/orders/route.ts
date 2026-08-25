@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
 
-  const isStaff = ["admin", "teacher"].includes(session.user.role ?? "");
+  const isStaff = ["admin", "teacher", "power_user"].includes(session.user.role ?? "");
 
   const orders = await prisma.order.findMany({
     where: {

@@ -109,7 +109,7 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
           <h1 className="text-2xl font-bold">Golden Bulldog Award</h1>
           <p className="text-gray-500 text-sm">Recognize a student for exceptional behavior</p>
         </div>
-        {(role === "admin" || role === "teacher") && (
+        {(role === "admin" || role === "teacher" || role === "power_user") && (
           <button onClick={() => setShowModal(true)} className="btn btn-primary bg-amber-500 hover:bg-amber-600 whitespace-nowrap">
             + Award Golden Bulldog
           </button>

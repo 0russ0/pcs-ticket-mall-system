@@ -20,10 +20,10 @@ export default async function LeaderboardsPage({
   const schoolId = session!.user.schoolId!;
   const role = session!.user.role;
   const isStudent = role === "student";
-  // Students and power users (house-points only) may never see individual
-  // student totals — just the house/team leaderboard and the (also
-  // house-aggregated) Challenges tab.
-  const isHouseOnly = isStudent || role === "power_user";
+  // Students may never see another student's individual total — just the
+  // house/team leaderboard and the (also house-aggregated) Challenges tab.
+  // Power users get full teacher-level access to every tab.
+  const isHouseOnly = isStudent;
 
   const { type: typeParam = "school_wide", homeroom: homeroomParam, band = "all" } = await searchParams;
   const type = isHouseOnly && !["team", "challenges"].includes(typeParam) ? "team" : typeParam;

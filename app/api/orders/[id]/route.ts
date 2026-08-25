@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const isStaff = ["admin", "teacher"].includes(session.user.role ?? "");
+  const isStaff = ["admin", "teacher", "power_user"].includes(session.user.role ?? "");
   const isStudent = session.user.role === "student";
   if (!isStaff && !isStudent) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

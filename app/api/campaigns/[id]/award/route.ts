@@ -13,25 +13,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const campaignId = Number(id);
   const schoolId = session.user.schoolId!;
   const staffId = session.user.staffId;
-  const isPowerUser = session.user.role === "power_user";
 
   if (!staffId) return NextResponse.json({ error: "Staff ID missing from session" }, { status: 400 });
 
   const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId, isActive: true } });
   if (!campaign) return NextResponse.json({ error: "Campaign not found or inactive" }, { status: 404 });
 
-  if (session.user.role === "teacher") {
+  // Teachers and power users (who get full teacher functions) are scoped to
+  // challenges that overlap the grades/homerooms they actually teach — house-
+  // scoped (and unrestricted) challenges are always visible. Staff with no
+  // class roster imported see everything.
+  if (session.user.role === "teacher" || session.user.role === "power_user") {
     const scope = await getTeacherScope(schoolId, staffId);
     if (!isChallengeVisibleToTeacher(campaign.audienceFilter, scope)) {
       return NextResponse.json({ error: "This challenge isn't available to your classes" }, { status: 403 });
     }
-  }
-
-  // Power users are scoped to house challenges only, and their contributions
-  // never count toward personal totals — even if this campaign's own
-  // addToTotal setting is true for other staff.
-  if (isPowerUser && (campaign.audienceFilter as { type?: string } | null)?.type !== "houses") {
-    return NextResponse.json({ error: "This challenge isn't available to you" }, { status: 403 });
   }
 
   const body = await req.json();
@@ -66,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       })),
     });
 
-    if (campaign.addToTotal && !isPowerUser) {
+    if (campaign.addToTotal) {
       // Also create PointAward rows and increment student totals
       const catId = categoryId ?? await tx.pointCategory
         .findFirst({ where: { schoolId }, orderBy: { isActive: "desc" }, select: { id: true } })

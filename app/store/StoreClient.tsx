@@ -107,7 +107,7 @@ export default function StoreClient({ role, studentPoints, userGrade, userHomero
   const { addItem, count, total } = useCart();
   const [added, setAdded] = useState<number | null>(null);
 
-  const isTeacher = role === "teacher";
+  const isTeacher = role === "teacher" || role === "power_user";
   const isAdmin = role === "admin";
   const canBuy = role === "student";
 

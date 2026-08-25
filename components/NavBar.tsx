@@ -22,7 +22,11 @@ const TEACHER_LINKS: NavItem[] = [
 
 const POWER_USER_LINKS: NavItem[] = [
   { href: "/dashboard", label: "Home" },
+  { href: "/dashboard/award-points", label: "Award Points" },
+  { href: "/dashboard/campaigns", label: "Challenges" },
   { href: "/house-points", label: "House Points" },
+  { href: "/dashboard/golden-bulldog", label: "Golden Bulldog" },
+  { href: "/store", label: "Store" },
   { href: "/leaderboards", label: "Leaderboards" },
 ];
 

@@ -12,37 +12,8 @@ export default async function DashboardPage() {
 
   if (role === "admin") return <AdminDashboard schoolId={schoolId} />;
   if (role === "teacher") return <TeacherDashboard schoolId={schoolId} />;
-  if (role === "power_user") return <PowerUserDashboard schoolId={schoolId} />;
+  if (role === "power_user") return <TeacherDashboard schoolId={schoolId} isPowerUser />;
   return <StudentDashboard schoolId={schoolId} studentId={session!.user.studentId!} />;
-}
-
-async function PowerUserDashboard({ schoolId }: { schoolId: number }) {
-  const teamSummaries = await getTeamSummaries(schoolId);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">House Points</h1>
-        <Link href="/house-points" className="btn btn-primary">🏠 Manage House Points</Link>
-      </div>
-      <p className="text-gray-500 text-sm">
-        You have Power User access: full control over house/team point totals, challenges, and the house wheel. Nothing you award here affects a student&apos;s personal balance.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {teamSummaries.map((t, i) => (
-          <div key={t.team} className="card flex items-center gap-3" style={{ borderLeft: `6px solid ${t.color}` }}>
-            <div className="text-xl font-bold text-gray-400 w-6">#{i + 1}</div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{t.team}</p>
-              <p className="text-xs text-gray-500">{t.memberCount} members</p>
-            </div>
-            <div className="text-lg font-bold shrink-0">{t.totalPoints}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 async function StudentDashboard({ schoolId, studentId }: { schoolId: number; studentId: number }) {
@@ -180,9 +151,10 @@ async function StudentDashboard({ schoolId, studentId }: { schoolId: number; stu
   );
 }
 
-async function TeacherDashboard({ schoolId }: { schoolId: number }) {
+async function TeacherDashboard({ schoolId, isPowerUser = false }: { schoolId: number; isPowerUser?: boolean }) {
   const session = await import("@/auth").then((m) => m.auth());
   const staffId = session?.user?.staffId;
+  const teamSummaries = isPowerUser ? await getTeamSummaries(schoolId) : null;
 
   // Check if this teacher has any classes assigned via enrollment import
   const assignedClasses = staffId
@@ -219,14 +191,38 @@ async function TeacherDashboard({ schoolId }: { schoolId: number }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Teacher Dashboard</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-bold">{isPowerUser ? "Power User Dashboard" : "Teacher Dashboard"}</h1>
         <div className="flex gap-2 flex-wrap">
           <Link href="/leaderboards" className="btn btn-secondary">🏆 Leaderboards</Link>
           <Link href="/dashboard/award-points" className="btn btn-secondary">⭐ Award Points</Link>
           <Link href="/dashboard/campaigns" className="btn btn-secondary">🎯 Challenges</Link>
+          {isPowerUser && <Link href="/house-points" className="btn btn-primary">🏠 House Points</Link>}
         </div>
       </div>
+
+      {isPowerUser && (
+        <>
+          <p className="text-gray-500 text-sm">
+            You have every teacher capability, plus House Points: bulk-award points to a house/grade/homeroom and create house-only challenges — those never affect a student&apos;s personal balance.
+          </p>
+          {teamSummaries && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {teamSummaries.map((t, i) => (
+                <div key={t.team} className="card flex items-center gap-3" style={{ borderLeft: `6px solid ${t.color}` }}>
+                  <div className="text-xl font-bold text-gray-400 w-6">#{i + 1}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{t.team}</p>
+                    <p className="text-xs text-gray-500">{t.memberCount} members</p>
+                  </div>
+                  <div className="text-lg font-bold shrink-0">{t.totalPoints}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {!useClasses && (
         <div className="card bg-amber-50 border border-amber-200 text-amber-800 text-sm">
           Showing homerooms — class enrollments haven&apos;t been imported yet. Contact your admin to import the class roster from PowerSchool.

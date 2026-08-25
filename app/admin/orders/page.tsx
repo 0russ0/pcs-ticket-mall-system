@@ -8,7 +8,7 @@ import { proxiedImageUrl } from "@/lib/image";
 
 export default async function AdminOrdersPage() {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     redirect("/dashboard");
   }
 

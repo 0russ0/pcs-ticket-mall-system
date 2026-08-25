@@ -16,7 +16,7 @@ function audienceSummary(filter: unknown): string {
 
 export default async function TeacherCampaignsPage() {
   const session = await auth();
-  if (!session?.user || !["admin", "teacher"].includes(session.user.role ?? "")) {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     redirect("/dashboard");
   }
 
@@ -29,10 +29,12 @@ export default async function TeacherCampaignsPage() {
     include: { _count: { select: { awards: true } } },
   });
 
-  // Teachers only see challenges that overlap the grades/homerooms they actually
-  // teach — house-scoped (and unrestricted) challenges are always visible to everyone.
+  // Teachers (and power users, who get full teacher functions) only see
+  // challenges that overlap the grades/homerooms they actually teach —
+  // house-scoped (and unrestricted) challenges are always visible to everyone.
+  // Staff with no class roster imported (typically power users) see everything.
   let campaigns = allCampaigns;
-  if (session.user.role === "teacher") {
+  if (session.user.role === "teacher" || session.user.role === "power_user") {
     const scope = await getTeacherScope(schoolId, session.user.staffId!);
     campaigns = allCampaigns.filter((c) => isChallengeVisibleToTeacher(c.audienceFilter, scope));
   }
