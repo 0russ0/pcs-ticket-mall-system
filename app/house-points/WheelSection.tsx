@@ -1,94 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import DrawingWheel from "@/app/dashboard/golden-bulldog/DrawingWheel";
-import { TEAM_COLORS } from "@/lib/leaderboard";
-
-type Challenge = { id: number; name: string };
-type LeaderboardRow = { student: { team: string } | null; points: number };
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import HouseWheel from "./HouseWheel";
 
 export default function WheelSection() {
-  const [challenges, setChallenges] = useState<Challenge[] | null>(null);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [entries, setEntries] = useState<{ studentId: number; name: string; count: number; color: string }[] | null>(null);
+  const router = useRouter();
+  const [points, setPoints] = useState(10);
   const [showWheel, setShowWheel] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/campaigns")
-      .then((r) => r.json())
-      .then((all: { id: number; name: string; isActive: boolean; audienceFilter: unknown }[]) => {
-        const houseChallenges = all.filter(
-          (c) => c.isActive && (c.audienceFilter as { type?: string } | null)?.type === "houses"
-        );
-        setChallenges(houseChallenges);
-        if (houseChallenges.length > 0) setSelectedId(houseChallenges[0].id);
+  async function handleWinner(house: string) {
+    setError(null);
+    try {
+      const res = await fetch("/api/house-points/award", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "house", targetValue: house, points, reason: "Spin the Wheel" }),
       });
-  }, []);
-
-  useEffect(() => {
-    if (!selectedId) { setEntries(null); return; }
-    setEntries(null);
-    fetch(`/api/campaigns/${selectedId}`)
-      .then((r) => r.json())
-      .then((data: { leaderboard: LeaderboardRow[] }) => {
-        const totals = new Map<string, number>();
-        for (const row of data.leaderboard) {
-          if (!row.student) continue;
-          totals.set(row.student.team, (totals.get(row.student.team) ?? 0) + row.points);
-        }
-        const wheelEntries = [...totals.entries()]
-          .filter(([, points]) => points > 0)
-          .map(([team, points], i) => ({
-            studentId: i,
-            name: team,
-            count: points,
-            color: TEAM_COLORS[team] ?? "#6366f1",
-          }));
-        setEntries(wheelEntries);
-      });
-  }, [selectedId]);
-
-  if (challenges === null) return <p className="text-gray-400 text-sm">Loading…</p>;
-  if (challenges.length === 0) {
-    return <p className="text-gray-500 text-sm">Create a house challenge first, then come back here to spin for it.</p>;
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to award points.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Failed to award points.");
+    }
   }
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-gray-500">Each of the 4 houses has an equal 25% chance. Set the points, then spin — the winning house gets them automatically.</p>
+
+      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{error}</p>}
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Challenge</label>
-        <select
-          className="input"
-          value={selectedId ?? ""}
-          onChange={(e) => setSelectedId(Number(e.target.value))}
-        >
-          {challenges.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Points to the winner</label>
+        <div className="flex gap-2">
+          {[5, 10, 25].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setPoints(n)}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold border-2 transition-colors ${points === n ? "border-amber-500 bg-amber-500 text-white" : "border-gray-300 bg-white text-gray-700 hover:border-amber-400"}`}
+            >
+              {n}
+            </button>
+          ))}
+          <input
+            className="input w-24 text-center"
+            type="number"
+            min={1}
+            value={points}
+            onChange={(e) => setPoints(Math.max(1, Number(e.target.value)))}
+          />
+        </div>
       </div>
 
-      {entries === null && <p className="text-gray-400 text-sm">Loading standings…</p>}
-      {entries && entries.length === 0 && (
-        <p className="text-gray-500 text-sm">No points awarded in this challenge yet — nothing to spin for.</p>
-      )}
-      {entries && entries.length > 0 && (
-        <>
-          <div className="flex flex-wrap gap-2">
-            {entries.map((e) => (
-              <span key={e.studentId} className="text-xs font-medium px-2 py-1 rounded-full text-white" style={{ backgroundColor: e.color }}>
-                {e.name}: {e.count} pts
-              </span>
-            ))}
-          </div>
-          <button onClick={() => setShowWheel(true)} className="btn btn-primary w-full bg-amber-500 hover:bg-amber-600">
-            🎡 Spin for a House
-          </button>
-        </>
-      )}
+      <button onClick={() => setShowWheel(true)} className="btn btn-primary w-full bg-amber-500 hover:bg-amber-600">
+        🎡 Spin for a House
+      </button>
 
-      {showWheel && entries && (
-        <DrawingWheel
-          entries={entries}
-          periodLabel={challenges.find((c) => c.id === selectedId)?.name ?? ""}
+      {showWheel && (
+        <HouseWheel
+          points={points}
+          onWinner={handleWinner}
           onClose={() => setShowWheel(false)}
         />
       )}
