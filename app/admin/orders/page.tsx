@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import OrderActions from "./OrderActions";
 import ProposalActions from "./ProposalActions";
-import AcknowledgeButton from "./AcknowledgeButton";
 import { proxiedImageUrl } from "@/lib/image";
 
 export default async function AdminOrdersPage() {
@@ -34,9 +33,10 @@ export default async function AdminOrdersPage() {
       orderBy: { approvedAt: "asc" },
     }),
     prisma.order.findMany({
-      where: { schoolId, cancelledBySelf: true, cancelAcknowledgedAt: null },
+      where: { schoolId, cancelledBySelf: true, cancelledAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
       include: { student: true, items: { include: { product: true } } },
       orderBy: { cancelledAt: "desc" },
+      take: 20,
     }),
     prisma.order.findMany({
       where: { schoolId, status: { in: ["completed", "cancelled"] } },
@@ -105,38 +105,6 @@ export default async function AdminOrdersPage() {
         </section>
       )}
 
-      {/* Students cancelling their own approved/pending orders — needs admin attention */}
-      {cancelledByStudent.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            🔔 Cancelled by Student
-            <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 font-bold">{cancelledByStudent.length}</span>
-          </h2>
-          <div className="space-y-2 border-l-4 border-red-300 pl-3">
-            {cancelledByStudent.map((order) => (
-              <div key={order.id} className="card bg-red-50/50">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-semibold">{order.student.firstName} {order.student.lastName}</p>
-                    <p className="text-xs text-gray-500">
-                      Order #{order.id} &middot; cancelled {order.cancelledAt?.toLocaleString()}
-                    </p>
-                  </div>
-                  <span className="font-bold text-red-600">{order.totalPoints} pts refunded</span>
-                </div>
-                <ul className="mt-2 text-sm text-gray-700">
-                  {order.items.map((item) => (
-                    <li key={item.id}>{item.product.name} x{item.quantity}</li>
-                  ))}
-                </ul>
-                {order.notes && <p className="text-xs text-gray-500 mt-1">{order.notes}</p>}
-                <AcknowledgeButton orderId={order.id} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Pending approval */}
       <section className="space-y-2">
         <h2 className="text-lg font-bold flex items-center gap-2">
@@ -171,6 +139,29 @@ export default async function AdminOrdersPage() {
           <OrderCard key={order.id} order={order} action="none" />
         ))}
       </section>
+
+      {/* Students cancelling their own approved/pending orders — small reference list */}
+      {cancelledByStudent.length > 0 && (
+        <section className="space-y-1.5">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+            Cancelled by Students ({cancelledByStudent.length})
+          </h2>
+          <div className="text-xs text-gray-500 divide-y border rounded-lg overflow-hidden">
+            {cancelledByStudent.map((order) => (
+              <div key={order.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-white">
+                <span className="truncate">
+                  <span className="font-medium text-gray-700">{order.student.firstName} {order.student.lastName}</span>
+                  {" — "}
+                  {order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ")}
+                </span>
+                <span className="shrink-0 text-gray-400">
+                  {order.totalPoints} pts &middot; {order.cancelledAt?.toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
