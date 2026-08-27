@@ -39,7 +39,16 @@ export default async function AdminOrdersPage() {
       take: 20,
     }),
     prisma.order.findMany({
-      where: { schoolId, status: { in: ["completed", "cancelled"] } },
+      // Student self-cancellations live only in the "Cancelled by Students"
+      // section below — exclude them here so each one shows up in exactly
+      // one place. Staff-initiated cancellations (rejections) still show.
+      where: {
+        schoolId,
+        OR: [
+          { status: "completed" },
+          { status: "cancelled", cancelledBySelf: false },
+        ],
+      },
       include: { student: true, items: { include: { product: true } } },
       orderBy: { submittedAt: "desc" },
       take: 20,
