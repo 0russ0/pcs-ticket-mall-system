@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
     const since = new Date(Date.now() - 8 * 60 * 60 * 1000);
 
-    const [newOrders, outstanding, pendingProposals] = await Promise.all([
+    const [newOrders, outstanding, pendingProposals, cancellations] = await Promise.all([
       prisma.order.findMany({
         where: { schoolId: school.id, status: "pending", submittedAt: { gte: since } },
         include: {
@@ -50,18 +50,32 @@ export async function GET(req: Request) {
         include: { proposedBy: { select: { firstName: true, lastName: true, googleEmail: true } } },
         orderBy: { createdAt: "asc" },
       }),
+      prisma.order.findMany({
+        where: { schoolId: school.id, cancelledBySelf: true, cancelledAt: { gte: since } },
+        include: {
+          student: { select: { firstName: true, lastName: true, grade: true, homeroom: true } },
+          items: { include: { product: { select: { name: true } } } },
+        },
+        orderBy: { cancelledAt: "desc" },
+      }),
     ]);
 
-    if (newOrders.length === 0 && outstanding.length === 0 && pendingProposals.length === 0) {
+    if (newOrders.length === 0 && outstanding.length === 0 && pendingProposals.length === 0 && cancellations.length === 0) {
       results.push({ school: school.name, sent: 0, skipped: true });
       continue;
     }
 
-    const html = buildEmailHtml(school.name, newOrders, outstanding, pendingProposals);
+    const html = buildEmailHtml(school.name, newOrders, outstanding, pendingProposals, cancellations);
     const newCount = newOrders.length;
     const propCount = pendingProposals.length;
-    const subject = (newCount + propCount) > 0
-      ? `PCS Mall Digest — ${newCount > 0 ? `${newCount} new order${newCount !== 1 ? "s" : ""}` : ""}${newCount > 0 && propCount > 0 ? ", " : ""}${propCount > 0 ? `${propCount} store proposal${propCount !== 1 ? "s" : ""}` : ""} (${school.name})`
+    const cancelCount = cancellations.length;
+    const parts = [
+      newCount > 0 ? `${newCount} new order${newCount !== 1 ? "s" : ""}` : null,
+      propCount > 0 ? `${propCount} store proposal${propCount !== 1 ? "s" : ""}` : null,
+      cancelCount > 0 ? `${cancelCount} cancellation${cancelCount !== 1 ? "s" : ""}` : null,
+    ].filter(Boolean);
+    const subject = parts.length > 0
+      ? `PCS Mall Digest — ${parts.join(", ")} (${school.name})`
       : `PCS Mall Digest — ${outstanding.length} outstanding (${school.name})`;
 
     const to = school.digestRecipients.map((r) => r.email);
@@ -123,6 +137,30 @@ function gradeBandTable(
     </table>`;
 }
 
+type CancelledOrder = {
+  id: number;
+  cancelledAt: Date | null;
+  totalPoints: number;
+  notes: string | null;
+  student: { firstName: string; lastName: string; grade: string; homeroom: string };
+  items: { quantity: number; pointsPerItem: number; product: { name: string } }[];
+};
+
+function cancellationRow(o: CancelledOrder) {
+  const items = o.items.map((i) => `${i.quantity}× ${i.product.name}`).join(", ");
+  const cancelled = o.cancelledAt?.toLocaleDateString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
+  }) ?? "";
+  return `
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${o.student.firstName} ${o.student.lastName}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Gr ${o.student.grade} · ${o.student.homeroom}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${items}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">${o.totalPoints} pts refunded</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px;">${cancelled}</td>
+    </tr>`;
+}
+
 type ProposalWithProposer = {
   id: number;
   name: string;
@@ -154,7 +192,7 @@ function proposalRow(p: ProposalWithProposer) {
     </tr>`;
 }
 
-function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outstanding: OrderWithDetails[], proposals: ProposalWithProposer[]) {
+function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outstanding: OrderWithDetails[], proposals: ProposalWithProposer[], cancellations: CancelledOrder[]) {
   const now = new Date().toLocaleString("en-US", {
     weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
   });
@@ -204,6 +242,21 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     </p>
   ` : "";
 
+  const cancellationsSection = cancellations.length > 0 ? `
+    <h2 style="color:#dc2626;font-size:18px;margin:32px 0 8px;">🔔 Cancelled by Students (${cancellations.length})</h2>
+    <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">Points were refunded and inventory restocked automatically.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead><tr>
+        <th style="${thStyle}">Student</th>
+        <th style="${thStyle}">Grade / Homeroom</th>
+        <th style="${thStyle}">Items</th>
+        <th style="${thStyle};text-align:right;">Refund</th>
+        <th style="${thStyle}">Cancelled</th>
+      </tr></thead>
+      <tbody>${cancellations.map(cancellationRow).join("")}</tbody>
+    </table>
+  ` : "";
+
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:750px;margin:0 auto;padding:24px;color:#111827;">
@@ -218,6 +271,7 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     ${proposalsSection}
     ${newSection}
     ${outstandingSection}
+    ${cancellationsSection}
   </div>
   <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">
   <p style="font-size:12px;color:#9ca3af;text-align:center;">

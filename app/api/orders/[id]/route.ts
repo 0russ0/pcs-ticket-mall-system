@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { refreshLeaderboard } from "@/lib/leaderboard";
-import { notifyStudentCancelledOrder } from "@/lib/notify";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -113,17 +112,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     await refreshLeaderboard(schoolId);
 
-    if (isStudent) {
-      // Best-effort — the cancellation itself already succeeded above, so an
-      // email failure here shouldn't turn a successful cancel into a 500. We
-      // await (rather than fire-and-forget) since serverless functions can be
-      // frozen once the response is sent.
-      try {
-        await notifyStudentCancelledOrder(schoolId, order, order.student, order.items);
-      } catch (err) {
-        console.error("Failed to send cancellation email:", err);
-      }
-    }
+    // No immediate email — student cancellations are surfaced in the daily
+    // digest and the in-app "Cancelled by Student" section on Approvals.
 
     return NextResponse.json(updated);
   }
