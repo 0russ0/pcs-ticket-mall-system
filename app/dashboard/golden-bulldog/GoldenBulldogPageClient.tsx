@@ -6,6 +6,7 @@ import GoldenBulldogModal from "@/components/GoldenBulldogModal";
 import DrawingWheel from "./DrawingWheel";
 import GBRankings from "./GBRankings";
 import { TEAM_COLORS } from "@/lib/leaderboard";
+import MultiSelectFilter from "@/components/MultiSelectFilter";
 
 type Award = {
   id: number;
@@ -50,10 +51,11 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
   const [awards, setAwards] = useState<Award[] | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Filter state shared between wheel and Recent Awards
-  const [filterGrade, setFilterGrade] = useState("");
-  const [filterHomeroom, setFilterHomeroom] = useState("");
-  const [filterTeam, setFilterTeam] = useState("");
+  // Filter state shared between wheel and Recent Awards — multi-select so an
+  // admin can e.g. combine grades 2, 3, and 4 into one drawing.
+  const [filterGrades, setFilterGrades] = useState<string[]>([]);
+  const [filterHomerooms, setFilterHomerooms] = useState<string[]>([]);
+  const [filterTeams, setFilterTeams] = useState<string[]>([]);
 
   useEffect(() => {
     setAwards(null);
@@ -73,12 +75,12 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
   const filteredAwards = useMemo(() => {
     if (!awards) return [];
     return awards.filter((a) => {
-      if (filterGrade && a.student.grade !== filterGrade) return false;
-      if (filterHomeroom && a.student.homeroom !== filterHomeroom) return false;
-      if (filterTeam && a.student.team !== filterTeam) return false;
+      if (filterGrades.length > 0 && !filterGrades.includes(a.student.grade)) return false;
+      if (filterHomerooms.length > 0 && !filterHomerooms.includes(a.student.homeroom)) return false;
+      if (filterTeams.length > 0 && !filterTeams.includes(a.student.team)) return false;
       return true;
     });
-  }, [awards, filterGrade, filterHomeroom, filterTeam]);
+  }, [awards, filterGrades, filterHomerooms, filterTeams]);
 
   // Wheel entries derived from the filtered set so filters drive who spins
   const wheelEntries = useMemo(() => {
@@ -144,33 +146,12 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
             {awards && awards.length > 0 && (
               <div className="flex flex-wrap gap-2 items-center">
                 <span className="text-xs font-medium text-gray-500 w-14">Filter:</span>
-                <select
-                  value={filterTeam}
-                  onChange={(e) => setFilterTeam(e.target.value)}
-                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
-                >
-                  <option value="">All Houses</option>
-                  {filterOptions.teams.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <select
-                  value={filterGrade}
-                  onChange={(e) => setFilterGrade(e.target.value)}
-                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
-                >
-                  <option value="">All Grades</option>
-                  {filterOptions.grades.map((g) => <option key={g} value={g}>Grade {g}</option>)}
-                </select>
-                <select
-                  value={filterHomeroom}
-                  onChange={(e) => setFilterHomeroom(e.target.value)}
-                  className="text-xs border rounded-lg px-2 py-1.5 bg-white"
-                >
-                  <option value="">All Homerooms</option>
-                  {filterOptions.homerooms.map((h) => <option key={h} value={h}>{h}</option>)}
-                </select>
-                {(filterGrade || filterHomeroom || filterTeam) && (
+                <MultiSelectFilter label="Houses" options={filterOptions.teams} selected={filterTeams} onChange={setFilterTeams} />
+                <MultiSelectFilter label="Grades" options={filterOptions.grades} selected={filterGrades} onChange={setFilterGrades} formatOption={(g) => `Grade ${g}`} />
+                <MultiSelectFilter label="Homerooms" options={filterOptions.homerooms} selected={filterHomerooms} onChange={setFilterHomerooms} />
+                {(filterGrades.length > 0 || filterHomerooms.length > 0 || filterTeams.length > 0) && (
                   <button
-                    onClick={() => { setFilterGrade(""); setFilterHomeroom(""); setFilterTeam(""); }}
+                    onClick={() => { setFilterGrades([]); setFilterHomerooms([]); setFilterTeams([]); }}
                     className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg border border-gray-200"
                   >
                     Clear
@@ -251,33 +232,12 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
           {/* Filter row (admin only) */}
           {role === "admin" && awards && awards.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              <select
-                value={filterGrade}
-                onChange={(e) => setFilterGrade(e.target.value)}
-                className="text-xs border rounded-lg px-2 py-1 bg-white"
-              >
-                <option value="">All Grades</option>
-                {filterOptions.grades.map((g) => <option key={g} value={g}>Grade {g}</option>)}
-              </select>
-              <select
-                value={filterHomeroom}
-                onChange={(e) => setFilterHomeroom(e.target.value)}
-                className="text-xs border rounded-lg px-2 py-1 bg-white"
-              >
-                <option value="">All Homerooms</option>
-                {filterOptions.homerooms.map((h) => <option key={h} value={h}>{h}</option>)}
-              </select>
-              <select
-                value={filterTeam}
-                onChange={(e) => setFilterTeam(e.target.value)}
-                className="text-xs border rounded-lg px-2 py-1 bg-white"
-              >
-                <option value="">All Teams</option>
-                {filterOptions.teams.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              {(filterGrade || filterHomeroom || filterTeam) && (
+              <MultiSelectFilter label="Grades" options={filterOptions.grades} selected={filterGrades} onChange={setFilterGrades} formatOption={(g) => `Grade ${g}`} />
+              <MultiSelectFilter label="Homerooms" options={filterOptions.homerooms} selected={filterHomerooms} onChange={setFilterHomerooms} />
+              <MultiSelectFilter label="Teams" options={filterOptions.teams} selected={filterTeams} onChange={setFilterTeams} />
+              {(filterGrades.length > 0 || filterHomerooms.length > 0 || filterTeams.length > 0) && (
                 <button
-                  onClick={() => { setFilterGrade(""); setFilterHomeroom(""); setFilterTeam(""); }}
+                  onClick={() => { setFilterGrades([]); setFilterHomerooms([]); setFilterTeams([]); }}
                   className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg border border-gray-200"
                 >
                   Clear filters
@@ -334,9 +294,9 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
           entries={wheelEntries}
           periodLabel={[
             PERIOD_LABELS[period],
-            filterTeam || null,
-            filterGrade ? `Grade ${filterGrade}` : null,
-            filterHomeroom || null,
+            filterTeams.length > 0 ? filterTeams.join(", ") : null,
+            filterGrades.length > 0 ? `Grade${filterGrades.length > 1 ? "s" : ""} ${filterGrades.join(", ")}` : null,
+            filterHomerooms.length > 0 ? filterHomerooms.join(", ") : null,
           ].filter(Boolean).join(" · ")}
           onClose={() => setShowWheel(false)}
         />
