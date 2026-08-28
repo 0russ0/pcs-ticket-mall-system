@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 // ── CSV utility ──────────────────────────────────────────────────────────────
 function escapeCell(val: unknown): string {
@@ -102,8 +102,14 @@ export default function ReportsClient() {
   const [popularItemData, setPopularItemData] = useState<PopularItemRow[]>([]);
 
   const [sort, setSort] = useState<[string, "asc"|"desc"]>(["lastName", "asc"]);
+  const [studentSearch, setStudentSearch] = useState("");
 
-  const since = getSince(period);
+  // Memoized on `period` only — getSince() reads `new Date()`, so recomputing it on
+  // every render (as before) produced a `since` string that drifted by milliseconds
+  // each time, which retriggered the fetch effect in an infinite loop (visible as
+  // rapid flicker on the "week"/"semester" periods, whose since-date keeps the
+  // current time-of-day instead of snapping to a fixed boundary like month/year/all do).
+  const since = useMemo(() => getSince(period), [period]);
   const sinceParam = since ? `?since=${encodeURIComponent(since)}` : "";
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? period;
 
@@ -132,6 +138,22 @@ export default function ReportsClient() {
   }, [sinceParam]);
 
   useEffect(() => { fetchTab(tab); }, [tab, period, fetchTab]);
+
+  // Drill into one student's full points log — used by the "View Log" link on the
+  // Student Totals tab so an admin who spots an abnormally high balance can jump
+  // straight to who awarded those points and when.
+  function viewStudentLog(fullName: string) {
+    setTab("awards");
+    setPeriod("all");
+    setStudentSearch(fullName);
+    setSort(["date", "desc"]);
+  }
+
+  const filteredAwardData = useMemo(() => {
+    const q = studentSearch.trim().toLowerCase();
+    if (!q) return awardData;
+    return awardData.filter((r) => r.studentName.toLowerCase().includes(q));
+  }, [awardData, studentSearch]);
 
   function toggleSort(col: string) {
     setSort((prev) => prev[0] === col && prev[1] === "asc" ? [col, "desc"] : [col, "asc"]);
@@ -171,7 +193,7 @@ export default function ReportsClient() {
 
   function exportAwards() {
     const headers = ["ID","Date","Student","Grade","Homeroom","House Team","Points","Category","Reason","Awarded By"];
-    const rows = awardData.map((r) => [r.id, r.date, r.studentName, r.grade, r.homeroom, r.team, r.points, r.category, r.reason, r.awardedBy]);
+    const rows = filteredAwardData.map((r) => [r.id, r.date, r.studentName, r.grade, r.homeroom, r.team, r.points, r.category, r.reason, r.awardedBy]);
     downloadCSV(`points-log-${period}.csv`, toCSV(headers, rows));
   }
 
@@ -202,9 +224,9 @@ export default function ReportsClient() {
       { label: "Unique Students", value: new Set(bulldogData.map((r) => r.studentName)).size },
     ],
     awards: [
-      { label: "Total Awards", value: awardData.length },
-      { label: "Total Points", value: awardData.reduce((s, r) => s + r.points, 0) },
-      { label: "Unique Students", value: new Set(awardData.map((r) => r.studentName)).size },
+      { label: "Total Awards", value: filteredAwardData.length },
+      { label: "Total Points", value: filteredAwardData.reduce((s, r) => s + r.points, 0) },
+      { label: "Unique Students", value: new Set(filteredAwardData.map((r) => r.studentName)).size },
     ],
     items: [
       { label: "Unique Items Sold", value: popularItemData.length },
@@ -246,13 +268,36 @@ export default function ReportsClient() {
             </button>
           ))}
         </div>
-        <button
-          onClick={exportFn}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
-        >
-          ⬇ Export CSV
-        </button>
+        <div className="flex items-center gap-2">
+          {tab === "awards" && (
+            <div className="relative">
+              <input
+                type="text"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder="Search student…"
+                className="text-sm border border-gray-300 rounded-lg pl-3 pr-7 py-1.5 w-44 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              {studentSearch && (
+                <button
+                  type="button"
+                  onClick={() => setStudentSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          )}
+          <button
+            onClick={exportFn}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            ⬇ Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -282,6 +327,7 @@ export default function ReportsClient() {
                 ].map(([col, label]) => (
                   <Th key={col} col={col} label={label} sort={sort} onSort={toggleSort} />
                 ))}
+                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Log</th>
               </tr>
             </thead>
             <tbody className="divide-y bg-white">
@@ -299,6 +345,15 @@ export default function ReportsClient() {
                   <td className="px-3 py-2 text-center">{r.goldenBulldogs > 0 ? `🐾 ${r.goldenBulldogs}` : "—"}</td>
                   <td className="px-3 py-2 text-right">{r.ordersPlaced}</td>
                   <td className="px-3 py-2 text-right">{r.pointsSpent}</td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => viewStudentLog(`${r.firstName} ${r.lastName}`)}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+                    >
+                      View Log
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -397,7 +452,7 @@ export default function ReportsClient() {
               </tr>
             </thead>
             <tbody className="divide-y bg-white">
-              {(sortedRows(awardData as unknown as Record<string, unknown>[]) as unknown as AwardRow[]).map((r) => (
+              {(sortedRows(filteredAwardData as unknown as Record<string, unknown>[]) as unknown as AwardRow[]).map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2 whitespace-nowrap">{r.date}</td>
                   <td className="px-3 py-2 font-medium">{r.studentName}</td>
@@ -412,7 +467,11 @@ export default function ReportsClient() {
               ))}
             </tbody>
           </table>
-          {awardData.length === 0 && <p className="text-center text-gray-400 py-8">No awards in this period.</p>}
+          {filteredAwardData.length === 0 && (
+            <p className="text-center text-gray-400 py-8">
+              {studentSearch ? `No awards matching "${studentSearch}" in this period.` : "No awards in this period."}
+            </p>
+          )}
         </div>
       )}
 
