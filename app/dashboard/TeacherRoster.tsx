@@ -27,6 +27,9 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
   const [feedback, setFeedback] = useState<FeedbackState>({});
   const [pointTotals, setPointTotals] = useState<{ [id: number]: number }>({});
   const [bulldogStudent, setBulldogStudent] = useState<Student | null>(null);
+  // Guards against rapid/stuck taps firing duplicate awards for the same student
+  // (a real incident: 132 stacked +3 clicks landed in ~30s from one touch glitch).
+  const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
 
   // Restore last selection on mount
   useEffect(() => {
@@ -85,24 +88,36 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
   }
 
   async function awardPoints(student: Student, pts: number) {
-    playCashRegister();
-    setPointTotals((prev) => ({ ...prev, [student.id]: (prev[student.id] ?? 0) + pts }));
-    flash(student.id, "points", pts);
-    const cats = await fetch("/api/categories").then((r) => r.json());
-    await fetch("/api/points/award", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ student_id: student.id, points: pts, category_id: cats[0]?.id, reason: "" }),
-    });
+    if (busyIds.has(student.id)) return;
+    setBusyIds((prev) => new Set(prev).add(student.id));
+    try {
+      playCashRegister();
+      setPointTotals((prev) => ({ ...prev, [student.id]: (prev[student.id] ?? 0) + pts }));
+      flash(student.id, "points", pts);
+      const cats = await fetch("/api/categories").then((r) => r.json());
+      await fetch("/api/points/award", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: student.id, points: pts, category_id: cats[0]?.id, reason: "" }),
+      });
+    } finally {
+      setBusyIds((prev) => { const next = new Set(prev); next.delete(student.id); return next; });
+    }
   }
 
   async function awardHouse(student: Student) {
-    flash(student.id, "house");
-    await fetch("/api/points/house-bonus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ house: student.team }),
-    });
+    if (busyIds.has(student.id)) return;
+    setBusyIds((prev) => new Set(prev).add(student.id));
+    try {
+      flash(student.id, "house");
+      await fetch("/api/points/house-bonus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ house: student.team }),
+      });
+    } finally {
+      setBusyIds((prev) => { const next = new Set(prev); next.delete(student.id); return next; });
+    }
   }
 
   const dropdownLabel = rosterItems[0]?.type === "class" ? "Class:" : "Class in Room:";
@@ -140,6 +155,7 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
           {students.map((student) => {
             const fb = feedback[student.id];
             const teamColor = TEAM_COLORS[student.team] || "#9ca3af";
+            const busy = busyIds.has(student.id);
             return (
               <div
                 key={student.id}
@@ -168,14 +184,16 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
                     <button
                       key={pts}
                       onClick={() => awardPoints(student, pts)}
-                      className="w-16 h-16 rounded-xl bg-blue-600 text-white font-bold text-xl hover:bg-blue-700 active:scale-95 transition-transform"
+                      disabled={busy}
+                      className="w-16 h-16 rounded-xl bg-blue-600 text-white font-bold text-xl hover:bg-blue-700 active:scale-95 transition-transform disabled:opacity-50 disabled:pointer-events-none"
                     >
                       {pts}
                     </button>
                   ))}
                   <button
                     onClick={() => awardHouse(student)}
-                    className="h-16 px-4 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-transform whitespace-nowrap"
+                    disabled={busy}
+                    className="h-16 px-4 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-transform whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none"
                     style={{ backgroundColor: teamColor }}
                     title={`Award 5 pts to ${student.team}`}
                   >
