@@ -51,16 +51,19 @@ export default function ClassUploadPage() {
 
       <div className="card space-y-3">
         <p className="text-sm text-gray-600">
-          Upload the &ldquo;Section Enrollment Report&rdquo; CSV exported from PowerSchool. Import students first if you haven&apos;t already.
+          Upload a &ldquo;Section Enrollment Report&rdquo; CSV exported from PowerSchool. Either of the two column layouts below is accepted — no need to edit headers. Import students first if you haven&apos;t already.
         </p>
-        <div className="bg-gray-50 rounded-lg p-3 text-xs font-mono text-gray-700 overflow-x-auto">
-          Course Name,Lastfirst,Teacher Email,Stud Lastfirst,First Name,Last Name,Name,Abbreviation,Expression,Grade,Course Number
+        <div className="bg-gray-50 rounded-lg p-3 text-xs font-mono text-gray-700 overflow-x-auto space-y-1">
+          <p>Course Name,Course Number,Section Number,Lastfirst,Teacher Email,Termid,Stud Lastfirst,Student Number,Grade,House</p>
+          <p className="text-gray-400">— or (older export) —</p>
+          <p>Course Name,Lastfirst,Teacher Email,Stud Lastfirst,First Name,Last Name,Name,Abbreviation,Expression,Grade,Course Number</p>
         </div>
         <ul className="text-xs text-gray-500 list-disc pl-5 space-y-1">
-          <li><strong>First Name / Last Name / Grade</strong> — matches against existing students by name (this export has no student ID). Ambiguous name matches are skipped and listed as errors.</li>
-          <li><strong>Course Name</strong> — the class (e.g. 7 MATH)</li>
-          <li><strong>Teacher Email</strong> — if this email is new to the system, a teacher account is created automatically so they can sign in right away</li>
-          <li><strong>Abbreviation</strong> — section code, used to distinguish two sections of the same course taught by the same teacher</li>
+          <li><strong>Student Number</strong> — matched against each student&apos;s existing ID in the system when present (most reliable). Falls back to First/Last Name (from &ldquo;Stud Lastfirst&rdquo; or separate columns) with Grade as a tiebreaker for exports without a student ID. Ambiguous name matches are skipped and listed as errors.</li>
+          <li><strong>Course Name</strong> — the class (e.g. 7 MATH). A homeroom row (e.g. &ldquo;2 HOMEROOM&rdquo;) is imported the same as any other class.</li>
+          <li><strong>Teacher Email</strong> — if this email is new to the system, a teacher account is created automatically so they can sign in right away. Two teachers listed for the same course+section (co-teachers) each get their own copy of the class with the identical student roster.</li>
+          <li><strong>Section Number / Abbreviation</strong> — distinguishes two sections of the same course taught by the same teacher</li>
+          <li><strong>House</strong> — not used by this import; house assignments are managed separately</li>
         </ul>
 
         <input type="file" accept=".csv" onChange={handleFile} />

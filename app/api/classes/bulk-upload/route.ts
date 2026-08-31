@@ -32,25 +32,37 @@ export async function POST(req: Request) {
     }
 
     const errors: string[] = [];
-    type ValidRow = { firstName: string; lastName: string; grade: string; className: string; teacherEmail: string; teacherLastfirst: string; period: string | null };
+    // Two PowerSchool export layouts are supported:
+    //  - older "Section Enrollment Report": First Name/Last Name columns, Abbreviation for section
+    //  - newer "Section Enrollment w/ Houses": Stud Lastfirst (combined name) + Student Number
+    //    (which lines up with Student.externalId, so it's the preferred match key), Section Number
+    //    instead of Abbreviation. The House column is intentionally not read here — house
+    //    assignment is managed separately in the app.
+    type ValidRow = { studentNumber: string | null; firstName: string; lastName: string; grade: string; className: string; teacherEmail: string; teacherLastfirst: string; period: string | null };
     const valid: ValidRow[] = [];
 
     for (let i = 0; i < parsed.data.length; i++) {
       const row = parsed.data[i];
       const rowNum = i + 2;
-      const firstName = row["First Name"]?.trim();
-      const lastName = row["Last Name"]?.trim();
+      const studentNumber = row["Student Number"]?.trim() || null;
+      let firstName = row["First Name"]?.trim();
+      let lastName = row["Last Name"]?.trim();
+      if ((!firstName || !lastName) && row["Stud Lastfirst"]) {
+        const [last = "", first = ""] = row["Stud Lastfirst"].split(",").map((s) => s.trim());
+        lastName = lastName || last;
+        firstName = firstName || first.split(" ")[0]; // drop middle name(s)
+      }
       const grade = row["Grade"]?.trim();
       const className = row["Course Name"]?.trim();
       const teacherEmail = row["Teacher Email"]?.trim().toLowerCase();
       const teacherLastfirst = row["Lastfirst"]?.trim() ?? "";
-      const period = row["Abbreviation"]?.trim() || null;
+      const period = row["Abbreviation"]?.trim() || row["Section Number"]?.trim() || null;
 
-      if (!firstName || !lastName || !className || !teacherEmail) {
-        errors.push(`Row ${rowNum}: missing First Name, Last Name, Course Name, or Teacher Email`);
+      if ((!studentNumber && (!firstName || !lastName)) || !className || !teacherEmail) {
+        errors.push(`Row ${rowNum}: missing Student Number (or First/Last Name), Course Name, or Teacher Email`);
         continue;
       }
-      valid.push({ firstName, lastName, grade: grade ?? "", className, teacherEmail, teacherLastfirst, period });
+      valid.push({ studentNumber, firstName: firstName ?? "", lastName: lastName ?? "", grade: grade ?? "", className, teacherEmail, teacherLastfirst, period });
     }
 
     if (valid.length === 0) {
@@ -69,9 +81,11 @@ export async function POST(req: Request) {
     const staffList = await prisma.staff.findMany({ where: { schoolId }, select: { id: true, googleEmail: true } });
     const staffMap = new Map(staffList.map((s) => [s.googleEmail.toLowerCase(), s.id]));
 
-    // Pre-load students, keyed by first+last name (case-insensitive). This CSV
-    // has no student ID column, so name is the only available match key.
-    const studentList = await prisma.student.findMany({ where: { schoolId }, select: { id: true, firstName: true, lastName: true, grade: true } });
+    // Pre-load students. Student Number (externalId) is the preferred match key when
+    // present — it's reliable and unambiguous. First+Last name (case-insensitive,
+    // grade as a tiebreaker) is the fallback for exports without a student ID column.
+    const studentList = await prisma.student.findMany({ where: { schoolId }, select: { id: true, externalId: true, firstName: true, lastName: true, grade: true } });
+    const studentByExternalId = new Map(studentList.filter((s) => s.externalId).map((s) => [s.externalId as string, s]));
     const studentMap = new Map<string, typeof studentList>();
     for (const s of studentList) {
       const key = `${s.firstName.trim().toLowerCase()}|${s.lastName.trim().toLowerCase()}`;
@@ -98,19 +112,21 @@ export async function POST(req: Request) {
         created++;
       }
 
-      const key = `${row.firstName.toLowerCase()}|${row.lastName.toLowerCase()}`;
-      const matches = studentMap.get(key) ?? [];
-      let studentDbId: number | undefined;
-      if (matches.length === 1) {
-        studentDbId = matches[0].id;
-      } else if (matches.length > 1) {
-        const byGrade = matches.filter((m) => m.grade === row.grade);
-        if (byGrade.length === 1) {
-          studentDbId = byGrade[0].id;
-        } else {
-          errors.push(`Ambiguous student "${row.firstName} ${row.lastName}" (Grade ${row.grade}) — matches ${matches.length} students, skipped`);
-          skipped++;
-          continue;
+      let studentDbId: number | undefined = row.studentNumber ? studentByExternalId.get(row.studentNumber)?.id : undefined;
+      if (!studentDbId) {
+        const key = `${row.firstName.toLowerCase()}|${row.lastName.toLowerCase()}`;
+        const matches = studentMap.get(key) ?? [];
+        if (matches.length === 1) {
+          studentDbId = matches[0].id;
+        } else if (matches.length > 1) {
+          const byGrade = matches.filter((m) => m.grade === row.grade);
+          if (byGrade.length === 1) {
+            studentDbId = byGrade[0].id;
+          } else {
+            errors.push(`Ambiguous student "${row.firstName} ${row.lastName}" (Grade ${row.grade}) — matches ${matches.length} students, skipped`);
+            skipped++;
+            continue;
+          }
         }
       }
 
