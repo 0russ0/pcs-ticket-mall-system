@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ALL_HOUSE_LOGOS, houseBadgeUrl } from "@/lib/houseLogos";
 
 type Student = {
   id: number;
@@ -154,6 +155,15 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
 
   return (
     <div className="space-y-4">
+      <div className="card">
+        <div className="flex items-center justify-around flex-wrap gap-4">
+          {ALL_HOUSE_LOGOS.map((h) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={h.team} src={h.logoUrl} alt={h.team} className="h-16 w-auto" />
+          ))}
+        </div>
+      </div>
+
       <form onSubmit={handleAdd} className="card space-y-3">
         <h2 className="font-bold">Add Student</h2>
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -228,7 +238,15 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                     <td className="py-2 pr-2">{s.lastName}, {s.firstName}</td>
                     <td className="py-2 pr-2">{s.grade}</td>
                     <td className="py-2 pr-2">{s.homeroom}</td>
-                    <td className="py-2 pr-2">{s.team}</td>
+                    <td className="py-2 pr-2">
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        {houseBadgeUrl(s.team) && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={houseBadgeUrl(s.team)!} alt="" className="w-5 h-5 rounded-full shrink-0" />
+                        )}
+                        {s.team}
+                      </span>
+                    </td>
                     <td className="py-2 pr-2 font-bold">{s.totalPoints}</td>
                     <td className="py-2 pr-2 text-gray-500">{s.googleEmail ?? "—"}</td>
                     <td className="py-2 whitespace-nowrap">

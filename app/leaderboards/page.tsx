@@ -4,6 +4,7 @@ import { TEAMS, TEAM_COLORS, getTeamSummaries, getHomeroomSummaries } from "@/li
 import Link from "next/link";
 import HomeroomSelect from "./HomeroomSelect";
 import HouseBarChart from "@/components/HouseBarChart";
+import { houseBadgeUrl } from "@/lib/houseLogos";
 
 type SearchParams = { type?: string; homeroom?: string; band?: string };
 
@@ -266,9 +267,14 @@ function LeaderboardCard({ rank, name, grade, team, points, highlight }: {
   rank: number; name: string; grade: string; team: string; points: number; highlight?: boolean;
 }) {
   const color = TEAM_COLORS[team] || "#9ca3af";
+  const badge = houseBadgeUrl(team);
   return (
     <div className={`card flex items-center gap-3 ${highlight ? "ring-2 ring-blue-500" : ""}`} style={{ borderLeft: `6px solid ${color}` }}>
       <div className="text-xl font-bold text-gray-400 w-8 text-center">{rank}</div>
+      {badge && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={badge} alt="" className="w-8 h-8 rounded-full shrink-0" />
+      )}
       <div className="flex-1">
         <p className="font-semibold">{name}</p>
         <p className="text-xs text-gray-500">Grade {grade} &middot; {team}</p>
