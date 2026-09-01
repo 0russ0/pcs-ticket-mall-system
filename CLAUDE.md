@@ -103,11 +103,14 @@ local-part is still `pcsmall`; only the display name was rebranded.
 - **Golden Bulldog certificates** — `lib/goldenBulldogCertificate.ts`, sent on award creation
   to the student's `StudentGuardian` rows.
 
-> ⚠️ **Family emails are gated OFF and must stay off.** The `family_golden_bulldog_emails_enabled`
-> setting (default `"false"`, toggle on the admin Settings page) gates all certificate email
-> to guardians. Russ explicitly said **do not begin sending to families until he says so** —
-> he is still finalizing the wording. Do not flip this setting, and do not remove the gate,
-> without an explicit go-ahead from him in the conversation.
+> ⚠️ **Family emails are now LIVE for schoolId 1**, as of 2026-09-01. The
+> `family_golden_bulldog_emails_enabled` setting was turned on by explicit instruction after
+> Russ approved the wording; any new Golden Bulldog award now emails the student's guardians
+> automatically, with no admin cc. The setting still defaults to `"false"` for a school that
+> hasn't had it turned on, and the toggle lives on the admin Settings page — treat it the same
+> way regardless of its current value: **never flip it in either direction, and never edit the
+> certificate template's wording/subject, without an explicit go-ahead from Russ in the
+> conversation.** Awards from before 2026-09-01 were sent manually by Russ, not by this system.
 
 `/api/cron/*` and `/api/auth/*` are excluded from the auth redirect in `middleware.ts`.
 
@@ -172,11 +175,22 @@ skipped, records with no email. Russ acts on those lists directly.
   (`Member Email`/`Member Name` columns); 115 on that list already existed and were skipped,
   2 shared mailboxes (front office, substitute nurse) were deliberately excluded rather than
   created as teacher accounts.
+- Found and fixed a date-off-by-one bug while confirming the first family certificate sends:
+  `observedDate` is a plain `@db.Date` (no time component, read back as UTC midnight), so
+  formatting it with an explicit Eastern timezone — or via a browser's local Eastern clock —
+  shifted it into the previous calendar day. Certificate email and the Recent Awards list now
+  format `observedDate` in UTC to show it exactly as stored; the award form's date-picker
+  default was also switched from `toISOString()` (UTC) to local date components. The first 3
+  live certificate emails (Anna Nicotra, Ava Mullen, Oliver Larmi, sent 2026-09-01) went out
+  with the wrong date in the subject/body before this was caught — confirmed delivered via
+  the Resend API (`resend.emails.list()`), not just "no exception thrown".
+- Learned that a standalone `tsx` script does **not** auto-load `.env.local` (only `.env` gets
+  picked up, apparently via Prisma's own loader) — `RESEND_API_KEY` and similar vars silently
+  read as `undefined` unless a script loads both files itself before importing anything that
+  reads them.
 
 ## Open items
 
-- **Waiting on Russ**: final wording for the outgoing family certificate email. Family
-  emails stay disabled until then.
 - 17 students in the system have **no guardian email on file** (Zayden Kendrick has a row in
   the guardian export but a blank email cell; the other 16 are absent from the export
   entirely).
