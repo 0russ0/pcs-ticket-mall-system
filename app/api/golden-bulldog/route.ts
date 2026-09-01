@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   }
 
   const [student, category] = await Promise.all([
-    prisma.student.findFirst({ where: { id: Number(studentId), schoolId }, select: { firstName: true, lastName: true, grade: true } }),
+    prisma.student.findFirst({ where: { id: Number(studentId), schoolId }, select: { id: true, firstName: true, lastName: true, grade: true } }),
     prisma.pointCategory.findFirst({ where: { id: Number(categoryId), schoolId }, select: { name: true } }),
   ]);
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 });

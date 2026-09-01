@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS = {
   point_expiration_days: "0", // 0 = no expiration
   allow_negative_points: "false",
   store_status: "open", // open | closed
+  family_golden_bulldog_emails_enabled: "false", // gate for sending certificate emails directly to guardians
 };
 
 export async function getSettings(schoolId: number): Promise<Record<string, string>> {

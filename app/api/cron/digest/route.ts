@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSetting } from "@/lib/settings";
 import { Resend } from "resend";
 
-const FROM = "pcsmall@providentcharterschool.org";
+const FROM = "PCS Bulldog Bank <pcsmall@providentcharterschool.org>";
 
 const LOWER_GRADES = ["2", "3", "4", "5"];
 const UPPER_GRADES = ["6", "7", "8"];
@@ -27,8 +28,9 @@ export async function GET(req: Request) {
     }
 
     const since = new Date(Date.now() - 8 * 60 * 60 * 1000);
+    const familyEmailsEnabled = (await getSetting(school.id, "family_golden_bulldog_emails_enabled")) === "true";
 
-    const [newOrders, outstanding, pendingProposals, cancellations] = await Promise.all([
+    const [newOrders, outstanding, pendingProposals, cancellations, goldenBulldogs] = await Promise.all([
       prisma.order.findMany({
         where: { schoolId: school.id, status: "pending", submittedAt: { gte: since } },
         include: {
@@ -58,25 +60,44 @@ export async function GET(req: Request) {
         },
         orderBy: { cancelledAt: "desc" },
       }),
+      prisma.goldenBulldog.findMany({
+        where: { schoolId: school.id, createdAt: { gte: since } },
+        include: {
+          student: { select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true } },
+          category: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
-    if (newOrders.length === 0 && outstanding.length === 0 && pendingProposals.length === 0 && cancellations.length === 0) {
+    if (newOrders.length === 0 && outstanding.length === 0 && pendingProposals.length === 0 && cancellations.length === 0 && goldenBulldogs.length === 0) {
       results.push({ school: school.name, sent: 0, skipped: true });
       continue;
     }
 
-    const html = buildEmailHtml(school.name, newOrders, outstanding, pendingProposals, cancellations);
+    const guardianCounts = goldenBulldogs.length > 0
+      ? await prisma.studentGuardian.groupBy({
+          by: ["studentId"],
+          where: { studentId: { in: goldenBulldogs.map((g) => g.student.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const guardianCountByStudent = new Map(guardianCounts.map((g) => [g.studentId, g._count._all]));
+
+    const html = buildEmailHtml(school.name, newOrders, outstanding, pendingProposals, cancellations, goldenBulldogs, familyEmailsEnabled, guardianCountByStudent);
     const newCount = newOrders.length;
     const propCount = pendingProposals.length;
     const cancelCount = cancellations.length;
+    const gbCount = goldenBulldogs.length;
     const parts = [
       newCount > 0 ? `${newCount} new order${newCount !== 1 ? "s" : ""}` : null,
       propCount > 0 ? `${propCount} store proposal${propCount !== 1 ? "s" : ""}` : null,
+      gbCount > 0 ? `${gbCount} golden bulldog${gbCount !== 1 ? "s" : ""}` : null,
       cancelCount > 0 ? `${cancelCount} cancellation${cancelCount !== 1 ? "s" : ""}` : null,
     ].filter(Boolean);
     const subject = parts.length > 0
-      ? `PCS Mall Digest — ${parts.join(", ")} (${school.name})`
-      : `PCS Mall Digest — ${outstanding.length} outstanding (${school.name})`;
+      ? `PCS Bulldog Bank Digest — ${parts.join(", ")} (${school.name})`
+      : `PCS Bulldog Bank Digest — ${outstanding.length} outstanding (${school.name})`;
 
     const to = school.digestRecipients.map((r) => r.email);
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -192,7 +213,43 @@ function proposalRow(p: ProposalWithProposer) {
     </tr>`;
 }
 
-function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outstanding: OrderWithDetails[], proposals: ProposalWithProposer[], cancellations: CancelledOrder[]) {
+type GoldenBulldogWithDetails = {
+  id: number;
+  createdAt: Date;
+  description: string;
+  student: { id: number; firstName: string; lastName: string; grade: string; homeroom: string };
+  category: { name: string };
+};
+
+function goldenBulldogRow(g: GoldenBulldogWithDetails, familyEmailsEnabled: boolean, guardianCount: number) {
+  const awarded = g.createdAt.toLocaleDateString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
+  });
+  const status = !familyEmailsEnabled
+    ? `<span style="color:#9ca3af;">Family emails not yet enabled</span>`
+    : guardianCount > 0
+      ? `<span style="color:#059669;">Sent to ${guardianCount} guardian${guardianCount !== 1 ? "s" : ""}</span>`
+      : `<span style="color:#dc2626;">⚠ No guardian email on file</span>`;
+  return `
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${g.student.firstName} ${g.student.lastName}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">Gr ${g.student.grade} · ${g.student.homeroom}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${g.category.name}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;">${status}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px;">${awarded}</td>
+    </tr>`;
+}
+
+function buildEmailHtml(
+  schoolName: string,
+  newOrders: OrderWithDetails[],
+  outstanding: OrderWithDetails[],
+  proposals: ProposalWithProposer[],
+  cancellations: CancelledOrder[],
+  goldenBulldogs: GoldenBulldogWithDetails[],
+  familyEmailsEnabled: boolean,
+  guardianCountByStudent: Map<number, number>
+) {
   const now = new Date().toLocaleString("en-US", {
     weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York",
   });
@@ -242,6 +299,20 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     </p>
   ` : "";
 
+  const goldenBulldogSection = goldenBulldogs.length > 0 ? `
+    <h2 style="color:#b45309;font-size:18px;margin:32px 0 8px;">🐾 Golden Bulldog Certificates (${goldenBulldogs.length})</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead><tr>
+        <th style="${thStyle}">Student</th>
+        <th style="${thStyle}">Grade / Homeroom</th>
+        <th style="${thStyle}">Category</th>
+        <th style="${thStyle}">Certificate</th>
+        <th style="${thStyle}">Awarded</th>
+      </tr></thead>
+      <tbody>${goldenBulldogs.map((g) => goldenBulldogRow(g, familyEmailsEnabled, guardianCountByStudent.get(g.student.id) ?? 0)).join("")}</tbody>
+    </table>
+  ` : "";
+
   const cancellationsSection = cancellations.length > 0 ? `
     <h2 style="color:#dc2626;font-size:18px;margin:32px 0 8px;">🔔 Cancelled by Students (${cancellations.length})</h2>
     <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">Points were refunded and inventory restocked automatically.</p>
@@ -262,7 +333,7 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:750px;margin:0 auto;padding:24px;color:#111827;">
   <div style="background:#1d4ed8;padding:20px 24px;border-radius:8px 8px 0 0;">
     <img src="https://pcs-ticket-mall-system.vercel.app/logo.png" alt="PCS" style="height:48px;vertical-align:middle;margin-right:12px;">
-    <span style="color:white;font-size:20px;font-weight:700;vertical-align:middle;">PCS Mall Digest</span>
+    <span style="color:white;font-size:20px;font-weight:700;vertical-align:middle;">PCS Bulldog Bank Digest</span>
   </div>
   <div style="background:#f9fafb;padding:16px 24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;">
     <p style="color:#6b7280;margin:0;font-size:13px;">${schoolName} · ${now} ET</p>
@@ -271,6 +342,7 @@ function buildEmailHtml(schoolName: string, newOrders: OrderWithDetails[], outst
     ${proposalsSection}
     ${newSection}
     ${outstandingSection}
+    ${goldenBulldogSection}
     ${cancellationsSection}
   </div>
   <hr style="margin:32px 0;border:none;border-top:1px solid #e5e7eb;">

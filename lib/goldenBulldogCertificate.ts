@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { getSetting } from "@/lib/settings";
 import { Resend } from "resend";
 
-const FROM = "pcsmall@providentcharterschool.org";
+const FROM = "PCS Bulldog Bank <pcsmall@providentcharterschool.org>";
 const LOGO_URL = "https://pcs-ticket-mall-system.vercel.app/golden-bulldog.png";
 
 function ordinalGrade(grade: string): string {
@@ -14,13 +15,16 @@ function ordinalGrade(grade: string): string {
 
 export async function sendGoldenBulldogCertificate(
   schoolId: number,
-  student: { firstName: string; lastName: string; grade: string },
+  student: { id: number; firstName: string; lastName: string; grade: string },
   category: { name: string },
   description: string,
   observedDate: Date
 ) {
-  const recipients = await prisma.digestRecipient.findMany({ where: { schoolId } });
-  if (recipients.length === 0) return;
+  const enabled = (await getSetting(schoolId, "family_golden_bulldog_emails_enabled")) === "true";
+  if (!enabled) return;
+
+  const guardians = await prisma.studentGuardian.findMany({ where: { studentId: student.id } });
+  if (guardians.length === 0) return;
   if (!process.env.RESEND_API_KEY) return;
 
   const fullName = `${student.firstName} ${student.lastName}`;
@@ -75,7 +79,7 @@ export async function sendGoldenBulldogCertificate(
   const resend = new Resend(process.env.RESEND_API_KEY);
   await resend.emails.send({
     from: FROM,
-    to: recipients.map((r) => r.email),
+    to: guardians.map((r) => r.email),
     subject,
     html,
   });

@@ -78,6 +78,7 @@ model Student {
   classes     StudentClass[]
   goldenBulldogs GoldenBulldog[]
   campaignAwards CampaignAward[]
+  guardians   StudentGuardian[]
 
   @@unique([schoolId, externalId])
   @@index([schoolId, totalPoints])
@@ -291,6 +292,20 @@ model GoldenBulldog {
 
   @@index([schoolId, studentId])
   @@map("golden_bulldogs")
+}
+
+model StudentGuardian {
+  id        Int      @id @default(autoincrement())
+  studentId Int      @map("student_id")
+  name      String   @db.VarChar(150)
+  email     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, email])
+  @@index([studentId])
+  @@map("student_guardians")
 }
 
 model HouseBonus {

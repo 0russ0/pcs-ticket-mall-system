@@ -19,6 +19,7 @@ export default function SettingsForm({
   const [expirationDays, setExpirationDays] = useState(initialSettings.point_expiration_days ?? "0");
   const [allowNegative, setAllowNegative] = useState(initialSettings.allow_negative_points === "true");
   const [storeOpen, setStoreOpen] = useState(initialSettings.store_status !== "closed");
+  const [familyEmailsEnabled, setFamilyEmailsEnabled] = useState(initialSettings.family_golden_bulldog_emails_enabled === "true");
   const [categories, setCategories] = useState(initialCategories);
   const [newCategory, setNewCategory] = useState("");
   const [saved, setSaved] = useState(false);
@@ -48,6 +49,7 @@ export default function SettingsForm({
         point_expiration_days: expirationDays,
         allow_negative_points: String(allowNegative),
         store_status: storeOpen ? "open" : "closed",
+        family_golden_bulldog_emails_enabled: String(familyEmailsEnabled),
       },
     });
   }
@@ -77,6 +79,20 @@ export default function SettingsForm({
             className={`btn ${storeOpen ? "btn-primary" : "btn-danger"} text-sm`}
           >
             {storeOpen ? "Open" : "Closed"}
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="text-sm font-medium">Golden Bulldog Family Emails</label>
+            <p className="text-xs text-gray-500">When on, the certificate email is sent directly to each student&apos;s guardian(s) on file instead of the approval-email admins.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFamilyEmailsEnabled((v) => !v)}
+            className={`btn ${familyEmailsEnabled ? "btn-primary" : "btn-danger"} text-sm shrink-0 ml-3`}
+          >
+            {familyEmailsEnabled ? "On" : "Off"}
           </button>
         </div>
 
