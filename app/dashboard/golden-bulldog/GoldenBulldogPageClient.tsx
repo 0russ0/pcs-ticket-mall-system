@@ -271,7 +271,7 @@ export default function GoldenBulldogPageClient({ role }: { role: string }) {
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mb-1">
-                    {a.category.name} · {new Date(a.observedDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {a.category.name} · {new Date(a.observedDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
                     {a.staff.firstName && ` · by ${a.staff.firstName} ${a.staff.lastName}`}
                   </p>
                   <p className="text-sm text-gray-700">{a.description}</p>

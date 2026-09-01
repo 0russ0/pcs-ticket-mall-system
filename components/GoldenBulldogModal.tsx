@@ -13,7 +13,11 @@ type Props = {
 };
 
 export default function GoldenBulldogModal({ prefillStudent, onClose, onSuccess }: Props) {
-  const today = new Date().toISOString().split("T")[0];
+  // toISOString() is always UTC, which would default to tomorrow's date for anyone
+  // submitting in the evening Eastern time (UTC is 4-5 hours ahead) — build the default
+  // from local date components instead so it matches the submitter's own calendar day.
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const [student, setStudent] = useState<Student | null>(prefillStudent ?? null);
   const [search, setSearch] = useState("");

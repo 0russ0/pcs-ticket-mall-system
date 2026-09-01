@@ -28,7 +28,10 @@ export async function sendGoldenBulldogCertificate(
   if (!process.env.RESEND_API_KEY) return;
 
   const fullName = `${student.firstName} ${student.lastName}`;
-  const dateStr = observedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+  // observedDate is a plain @db.Date column with no time component — Prisma reads it back
+  // as UTC midnight, so formatting it in America/New_York would shift it into the previous
+  // calendar day. Format in UTC to show the date exactly as it was picked/stored.
+  const dateStr = observedDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
   const subject = `${fullName} received a Golden Bulldog award - ${dateStr}`;
 
