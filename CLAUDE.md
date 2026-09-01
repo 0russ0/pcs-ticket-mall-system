@@ -80,6 +80,11 @@ bulk awards, house-only challenges, and the house wheel — and nothing else adm
 power user awards must only ever affect house totals, never a student's personal balance
 (`addToTotal` is forced `false` for them).
 
+A `Staff` record needs no `Class`/homeroom assignment to function — Award Points and Golden
+Bulldog both let any teacher target any student in the school directly. Bulk staff imports
+(e.g. from a Google Workspace group export) can create bare teacher accounts with just
+`googleEmail`/`firstName`/`lastName`/`role: "teacher"`; no roster wiring required.
+
 **Privacy rule that runs through the whole app:** students and teachers never see another
 student's individual totals outside their own scope. House aggregates are public; individual
 data is not. Teacher challenge visibility is scoped to their own grades/homerooms; house-type
@@ -158,6 +163,15 @@ skipped, records with no email. Russ acts on those lists directly.
   Watch for that pattern.
 - The class schedule was fully replaced (cleared, then reimported) from the current roster —
   783 classes, 8,260 enrollments, 298 students, zero errors.
+- House logos/badges were added (`public/houses/`, `lib/houseLogos.ts`) — combined from two
+  provided asset variants since neither alone was legible on a white background (one had a
+  white bridge icon, the other white outline text). Shown on the students admin page,
+  leaderboard rows, and `HouseBarChart` (badge size intentionally 96px there, not the app
+  default — Russ asked to triple it).
+- Bulk-imported 39 new teacher accounts from a Google Workspace group export
+  (`Member Email`/`Member Name` columns); 115 on that list already existed and were skipped,
+  2 shared mailboxes (front office, substitute nurse) were deliberately excluded rather than
+  created as teacher accounts.
 
 ## Open items
 
