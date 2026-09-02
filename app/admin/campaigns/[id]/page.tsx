@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import CampaignAwardPanel from "@/components/CampaignAwardPanel";
+import DeleteCampaignButton from "@/components/DeleteCampaignButton";
 
 function audienceSummary(filter: unknown): string {
   if (!filter || typeof filter !== "object") return "All students";
@@ -35,7 +36,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     }),
     prisma.student.findMany({
       where: { schoolId },
-      select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true },
+      select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true, team: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     }),
   ]);
@@ -136,6 +137,10 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </button>
           </form>
         </div>
+      )}
+
+      {(isAdmin || campaign.createdByStaffId === session.user.staffId) && (
+        <DeleteCampaignButton campaignId={campaign.id} redirectHref="/admin/campaigns" />
       )}
     </div>
   );

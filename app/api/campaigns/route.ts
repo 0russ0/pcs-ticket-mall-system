@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const schoolId = session.user.schoolId!;
+  const staffId = session.user.staffId;
   const isPowerUser = session.user.role === "power_user";
   const body = await req.json();
   const { name, description, startDate, endDate, durationType, audienceFilter, addToTotal } = body;
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
       // enforced server-side regardless of what the client sends.
       audienceFilter: isPowerUser ? { type: "houses", values: [...TEAMS] } : (audienceFilter ?? null),
       addToTotal: isPowerUser ? false : addToTotal !== false,
+      createdByStaffId: staffId ?? null,
     },
   });
   return NextResponse.json(campaign, { status: 201 });

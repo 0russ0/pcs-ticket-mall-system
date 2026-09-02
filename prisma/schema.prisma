@@ -104,6 +104,7 @@ model Staff {
   goldenBulldogs    GoldenBulldog[]
   proposedProducts  Product[] @relation("ProposedProducts")
   campaignAwards    CampaignAward[]
+  createdCampaigns  Campaign[] @relation("CampaignCreator")
 
   @@map("staff")
 }
@@ -353,9 +354,11 @@ model Campaign {
   addToTotal     Boolean   @default(true) @map("add_to_total")
   isActive       Boolean   @default(true) @map("is_active")
   createdAt      DateTime  @default(now()) @map("created_at")
+  createdByStaffId Int?    @map("created_by_staff_id")
 
-  school School          @relation(fields: [schoolId], references: [id])
-  awards CampaignAward[]
+  school    School          @relation(fields: [schoolId], references: [id])
+  createdBy Staff?          @relation("CampaignCreator", fields: [createdByStaffId], references: [id])
+  awards    CampaignAward[]
 
   @@index([schoolId, isActive])
   @@map("campaigns")
@@ -371,7 +374,7 @@ model CampaignAward {
   reason     String?
   createdAt  DateTime @default(now()) @map("created_at")
 
-  campaign Campaign @relation(fields: [campaignId], references: [id])
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   student  Student  @relation(fields: [studentId], references: [id])
   staff    Staff    @relation(fields: [staffId], references: [id])
 

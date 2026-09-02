@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import CampaignAwardPanel from "@/components/CampaignAwardPanel";
+import DeleteCampaignButton from "@/components/DeleteCampaignButton";
 import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeScope";
 
 function audienceSummary(filter: unknown): string {
@@ -49,7 +50,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
     }),
     prisma.student.findMany({
       where: { schoolId },
-      select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true },
+      select: { id: true, firstName: true, lastName: true, grade: true, homeroom: true, team: true },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     }),
   ]);
@@ -132,6 +133,10 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
           />
         )}
       </div>
+
+      {(session.user.role === "admin" || campaign.createdByStaffId === session.user.staffId) && (
+        <DeleteCampaignButton campaignId={campaign.id} redirectHref="/dashboard/campaigns" />
+      )}
     </div>
   );
 }
