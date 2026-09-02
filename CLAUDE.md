@@ -85,6 +85,23 @@ Bulldog both let any teacher target any student in the school directly. Bulk sta
 (e.g. from a Google Workspace group export) can create bare teacher accounts with just
 `googleEmail`/`firstName`/`lastName`/`role: "teacher"`; no roster wiring required.
 
+**Campaigns ("Challenges").** `Campaign` + `CampaignAward` (one row per student per award —
+no group-level table). Only `admin`/`power_user` can create one (`POST /api/campaigns`);
+power-user-created campaigns are forced house-scoped (`audienceFilter.type === "houses"`) and
+`addToTotal: false` server-side regardless of what's sent. `Campaign.createdByStaffId` records
+the creator; the campaign's own creator (any role) or an admin can delete it
+(`DELETE /api/campaigns/[id]`), which cascades its `CampaignAward` rows but does **not**
+reverse any already-applied personal-total effects from an `addToTotal` campaign. The award
+panel (`components/CampaignAwardPanel.tsx`, used by both the admin and teacher/power-user
+detail pages) lets anyone with award access target an individual student, a grade, a
+homeroom, or a house — group targeting just auto-selects every matching student client-side
+and reuses the same per-student award endpoint, so `addToTotal` house/grade/homeroom awards
+can genuinely touch dozens of students' personal totals in one click; that's intentional (a
+teacher could already do it one-by-one), but worth knowing before award UIs are touched.
+House-scoped campaign standings are aggregated live by summing `CampaignAward.points` grouped
+by `student.team` (see `Challenges()` in `app/leaderboards/page.tsx`) — there is no separate
+campaign-house-bonus table.
+
 **Privacy rule that runs through the whole app:** students and teachers never see another
 student's individual totals outside their own scope. House aggregates are public; individual
 data is not. Teacher challenge visibility is scoped to their own grades/homerooms; house-type
@@ -184,6 +201,13 @@ skipped, records with no email. Russ acts on those lists directly.
   live certificate emails (Anna Nicotra, Ava Mullen, Oliver Larmi, sent 2026-09-01) went out
   with the wrong date in the subject/body before this was caught — confirmed delivered via
   the Resend API (`resend.emails.list()`), not just "no exception thrown".
+- Added campaign deletion (creator-or-admin, cascades `CampaignAward`) and grade/homeroom/
+  house group targeting to the campaign award panel. Found and removed a dead duplicate of
+  `CampaignAwardPanel` at `app/admin/campaigns/[id]/CampaignAwardPanel.tsx` that neither
+  campaign detail page actually imported. `.claude/launch.json` was added so `npm run dev`
+  can be previewed in-browser going forward — but the app only supports Google OAuth login,
+  no dev bypass exists, so a fresh session still can't click-test past the sign-in screen
+  without real staff credentials.
 - Learned that a standalone `tsx` script does **not** auto-load `.env.local` (only `.env` gets
   picked up, apparently via Prisma's own loader) — `RESEND_API_KEY` and similar vars silently
   read as `undefined` unless a script loads both files itself before importing anything that
