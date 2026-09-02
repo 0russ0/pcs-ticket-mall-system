@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import CampaignAwardPanel from "@/components/CampaignAwardPanel";
 import DeleteCampaignButton from "@/components/DeleteCampaignButton";
+import EditCampaignModal from "@/components/EditCampaignModal";
 import { getTeacherScope, isChallengeVisibleToTeacher } from "@/lib/challengeScope";
+import { canManageCampaign } from "@/lib/campaignPermissions";
 
 function audienceSummary(filter: unknown): string {
   if (!filter || typeof filter !== "object") return "All students";
@@ -40,6 +42,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
 
   const now = new Date();
   const isActive = campaign.isActive && (!campaign.endDate || campaign.endDate >= now);
+  const canManage = canManageCampaign({ role: session.user.role ?? "", staffId: session.user.staffId ?? null }, campaign);
 
   const [awardTotals, allStudents] = await Promise.all([
     prisma.campaignAward.groupBy({
@@ -71,11 +74,21 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
             <h1 className="text-2xl font-bold">{campaign.name}</h1>
             {campaign.description && <p className="text-gray-500 mt-1">{campaign.description}</p>}
           </div>
-          {isActive ? (
-            <span className="badge bg-green-100 text-green-700 shrink-0">Active</span>
-          ) : (
-            <span className="badge bg-gray-100 text-gray-500 shrink-0">Ended</span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {isActive ? (
+              <span className="badge bg-green-100 text-green-700">Active</span>
+            ) : (
+              <span className="badge bg-gray-100 text-gray-500">Ended</span>
+            )}
+            {canManage && (
+              <EditCampaignModal
+                campaignId={campaign.id}
+                initialName={campaign.name}
+                initialDescription={campaign.description ?? ""}
+                initialEndDate={campaign.endDate ? campaign.endDate.toISOString().split("T")[0] : ""}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -134,7 +147,7 @@ export default async function TeacherCampaignDetailPage({ params }: { params: Pr
         )}
       </div>
 
-      {(session.user.role === "admin" || campaign.createdByStaffId === session.user.staffId) && (
+      {canManage && (
         <DeleteCampaignButton campaignId={campaign.id} redirectHref="/dashboard/campaigns" />
       )}
     </div>

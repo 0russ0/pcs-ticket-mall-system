@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { canManageCampaign } from "@/lib/campaignPermissions";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -53,7 +54,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const existing = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (session.user.role === "power_user" && (existing.audienceFilter as { type?: string } | null)?.type !== "houses") {
+  if (!canManageCampaign({ role: session.user.role ?? "", staffId: session.user.staffId ?? null }, existing)) {
     return NextResponse.json({ error: "This challenge isn't available to you" }, { status: 403 });
   }
 
@@ -82,12 +83,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const existing = await prisma.campaign.findFirst({ where: { id: campaignId, schoolId } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Anyone can delete a campaign they created; admins can delete any campaign.
-  // Legacy campaigns created before creator-tracking existed (createdByStaffId
-  // null) can only be removed by an admin.
-  const isCreator = existing.createdByStaffId !== null && existing.createdByStaffId === session.user.staffId;
-  if (session.user.role !== "admin" && !isCreator) {
-    return NextResponse.json({ error: "Only the campaign's creator or an admin can delete it" }, { status: 403 });
+  if (!canManageCampaign({ role: session.user.role ?? "", staffId: session.user.staffId ?? null }, existing)) {
+    return NextResponse.json({ error: "Only the campaign's creator, a power user managing this house challenge, or an admin can delete it" }, { status: 403 });
   }
 
   // Deleting removes this campaign's own award ledger/leaderboard (CampaignAward
