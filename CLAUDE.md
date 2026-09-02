@@ -89,9 +89,14 @@ Bulldog both let any teacher target any student in the school directly. Bulk sta
 no group-level table). Only `admin`/`power_user` can create one (`POST /api/campaigns`);
 power-user-created campaigns are forced house-scoped (`audienceFilter.type === "houses"`) and
 `addToTotal: false` server-side regardless of what's sent. `Campaign.createdByStaffId` records
-the creator; the campaign's own creator (any role) or an admin can delete it
-(`DELETE /api/campaigns/[id]`), which cascades its `CampaignAward` rows but does **not**
-reverse any already-applied personal-total effects from an `addToTotal` campaign. The award
+the creator. Editing (name/description/end date, `PATCH`) and deleting (`DELETE`) both gate on
+`canManageCampaign()` in `lib/campaignPermissions.ts` — the single source of truth for this,
+used by both routes and both detail pages' button visibility so they can't drift apart: an
+admin can manage any campaign, the creator can manage their own regardless of role, and —
+important — **a power user can manage *any* house-scoped campaign, not just ones they
+personally created**, since they already see/award on all of these via the campaigns list
+filter. Deleting cascades the campaign's `CampaignAward` rows but does **not** reverse any
+already-applied personal-total effects from an `addToTotal` campaign. The award
 panel (`components/CampaignAwardPanel.tsx`, used by both the admin and teacher/power-user
 detail pages) lets anyone with award access target an individual student, a grade, a
 homeroom, or a house — group targeting just auto-selects every matching student client-side
