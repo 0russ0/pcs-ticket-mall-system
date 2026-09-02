@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import OrderActions from "./OrderActions";
 import ProposalActions from "./ProposalActions";
+import PendingApprovalsSection from "./PendingApprovalsSection";
 import { proxiedImageUrl } from "@/lib/image";
 
 export default async function AdminOrdersPage() {
@@ -115,18 +116,7 @@ export default async function AdminOrdersPage() {
       )}
 
       {/* Pending approval */}
-      <section className="space-y-2">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          ⏳ Pending Approval
-          <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800 font-bold">{pending.length}</span>
-        </h2>
-        <div className="space-y-2 border-l-4 border-amber-300 pl-3">
-          {pending.length === 0 && <p className="text-gray-500">No pending orders.</p>}
-          {pending.map((order) => (
-            <OrderCard key={order.id} order={order} action="pending" />
-          ))}
-        </div>
-      </section>
+      <PendingApprovalsSection orders={pending} />
 
       {/* Approved, waiting for the student to pick up */}
       <section className="space-y-2">
@@ -134,19 +124,25 @@ export default async function AdminOrdersPage() {
           📦 Pending Pickup
           <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800 font-bold">{approved.length}</span>
         </h2>
-        <div className="space-y-2 border-l-4 border-blue-300 pl-3">
-          {approved.length === 0 && <p className="text-gray-500">No approved orders awaiting pickup.</p>}
-          {approved.map((order) => (
-            <OrderCard key={order.id} order={order} action="approved" />
-          ))}
-        </div>
+        {approved.length === 0 && <p className="text-gray-500 text-sm">No approved orders awaiting pickup.</p>}
+        {approved.length > 0 && (
+          <div className="divide-y border rounded-lg overflow-hidden">
+            {approved.map((order) => (
+              <OrderRow key={order.id} order={order} action="approved" />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="space-y-2">
         <h2 className="text-lg font-bold">Recent History</h2>
-        {recent.map((order) => (
-          <OrderCard key={order.id} order={order} action="none" />
-        ))}
+        {recent.length > 0 && (
+          <div className="divide-y border rounded-lg overflow-hidden">
+            {recent.map((order) => (
+              <OrderRow key={order.id} order={order} action="none" />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Students cancelling their own approved/pending orders — small reference list */}
@@ -180,28 +176,27 @@ type OrderWithItems = {
   status: string;
   totalPoints: number;
   submittedAt: Date;
-  student: { firstName: string; lastName: string };
+  student: { firstName: string; lastName: string; grade: string; homeroom: string };
   items: { id: number; quantity: number; pointsPerItem: number; product: { name: string } }[];
 };
 
-function OrderCard({ order, action }: { order: OrderWithItems; action: "pending" | "approved" | "none" }) {
+function OrderRow({ order, action }: { order: OrderWithItems; action: "pending" | "approved" | "none" }) {
   return (
-    <div className="card">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="font-semibold">{order.student.firstName} {order.student.lastName}</p>
-          <p className="text-xs text-gray-500">Order #{order.id} &middot; {order.submittedAt.toLocaleDateString()}</p>
-        </div>
-        <span className="font-bold text-blue-600">{order.totalPoints} pts</span>
-      </div>
-      <ul className="mt-2 text-sm text-gray-700">
-        {order.items.map((item) => (
-          <li key={item.id}>{item.product.name} x{item.quantity}</li>
-        ))}
-      </ul>
-      {action !== "none" && <OrderActions orderId={order.id} action={action} />}
+    <div className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white flex-wrap">
+      <span className="font-medium shrink-0">{order.student.firstName} {order.student.lastName}</span>
+      <span className="text-xs text-gray-400 shrink-0">Gr {order.student.grade} · {order.student.homeroom}</span>
+      <span className="flex-1 min-w-[120px] text-xs text-gray-500 truncate">
+        {order.items.map((item) => `${item.product.name} x${item.quantity}`).join(", ")}
+      </span>
+      <span className="text-xs font-bold text-blue-600 shrink-0">{order.totalPoints} pts</span>
+      <span className="text-xs text-gray-400 shrink-0">{order.submittedAt.toLocaleDateString()}</span>
+      {action !== "none" && (
+        <span className="shrink-0">
+          <OrderActions orderId={order.id} action={action} compact />
+        </span>
+      )}
       {action === "none" && (
-        <span className={`badge mt-2 ${order.status === "completed" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+        <span className={`shrink-0 badge text-xs ${order.status === "completed" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
           {order.status}
         </span>
       )}

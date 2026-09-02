@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function OrderActions({ orderId, action }: { orderId: number; action: "pending" | "approved" }) {
+export default function OrderActions({ orderId, action, compact }: { orderId: number; action: "pending" | "approved"; compact?: boolean }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -37,6 +37,35 @@ export default function OrderActions({ orderId, action }: { orderId: number; act
     if (!window.confirm("Cancel this order? Points will be refunded and inventory restocked.")) return;
     const reason = window.prompt("Reason for cancelling (optional):") ?? "";
     send("cancel", reason);
+  }
+
+  if (compact) {
+    const btnBase = "text-xs font-bold px-2.5 py-1 rounded-md transition-colors disabled:opacity-50";
+    return (
+      <div className="flex items-center gap-1.5">
+        {error && <span className="text-xs text-red-600">{error}</span>}
+        {action === "pending" && (
+          <>
+            <button disabled={submitting} onClick={() => send("approve")} className={`${btnBase} bg-green-600 text-white hover:bg-green-700`}>
+              Approve
+            </button>
+            <button disabled={submitting} onClick={handleReject} className={`${btnBase} bg-white text-red-600 border border-red-300 hover:bg-red-50`}>
+              Reject
+            </button>
+          </>
+        )}
+        {action === "approved" && (
+          <>
+            <button disabled={submitting} onClick={() => send("complete")} className={`${btnBase} bg-green-600 text-white hover:bg-green-700`}>
+              Complete
+            </button>
+            <button disabled={submitting} onClick={handleCancel} className={`${btnBase} bg-white text-red-600 border border-red-300 hover:bg-red-50`}>
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (
