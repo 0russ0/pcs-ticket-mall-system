@@ -162,19 +162,20 @@ async function TeacherDashboard({ schoolId, isPowerUser = false }: { schoolId: n
     ? await prisma.class.findMany({
         where: { schoolId, teacherId: staffId },
         orderBy: { name: "asc" },
-        select: { id: true, name: true, period: true },
+        select: { id: true, name: true, period: true, classGroupId: true },
       })
     : [];
 
   // Fall back to homerooms if no classes imported yet
   const useClasses = assignedClasses.length > 0;
-  let rosterItems: { label: string; value: string; type: "class" | "homeroom" }[] = [];
+  let rosterItems: { label: string; value: string; type: "class" | "homeroom"; classGroupId?: number }[] = [];
 
   if (useClasses) {
     rosterItems = assignedClasses.map((c) => ({
       label: c.period ? `${c.name} (Period ${c.period})` : c.name,
       value: String(c.id),
       type: "class" as const,
+      classGroupId: c.classGroupId ?? undefined,
     }));
   } else {
     const homerooms = await prisma.student.findMany({
@@ -227,6 +228,11 @@ async function TeacherDashboard({ schoolId, isPowerUser = false }: { schoolId: n
           Showing homerooms — class enrollments haven&apos;t been imported yet. Contact your admin to import the class roster from PowerSchool.
         </div>
       )}
+      <div className="flex justify-end">
+        <Link href="/dashboard/classes/new" className="text-sm text-blue-600 hover:underline font-medium">
+          + New Class
+        </Link>
+      </div>
       <TeacherRoster rosterItems={rosterItems} />
     </div>
   );

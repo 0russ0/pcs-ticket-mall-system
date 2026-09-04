@@ -50,6 +50,7 @@ model School {
   houseBonuses     HouseBonus[]
   groupBonuses     GroupBonus[]
   classes          Class[]
+  classGroups      ClassGroup[]
   goldenBulldogs   GoldenBulldog[]
   campaigns        Campaign[]
 
@@ -105,24 +106,47 @@ model Staff {
   proposedProducts  Product[] @relation("ProposedProducts")
   campaignAwards    CampaignAward[]
   createdCampaigns  Campaign[] @relation("CampaignCreator")
+  createdClassGroups ClassGroup[] @relation("ClassGroupCreator")
 
   @@map("staff")
 }
 
 model Class {
-  id        Int      @id @default(autoincrement())
-  schoolId  Int      @map("school_id")
-  teacherId Int      @map("teacher_id")
-  name      String   @db.VarChar(200)
-  period    String?  @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  schoolId     Int      @map("school_id")
+  teacherId    Int      @map("teacher_id")
+  name         String   @db.VarChar(200)
+  period       String?  @db.VarChar(50)
+  classGroupId Int?     @map("class_group_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  school   School         @relation(fields: [schoolId], references: [id])
-  teacher  Staff          @relation(fields: [teacherId], references: [id])
-  students StudentClass[]
+  school     School      @relation(fields: [schoolId], references: [id])
+  teacher    Staff       @relation(fields: [teacherId], references: [id])
+  classGroup ClassGroup? @relation(fields: [classGroupId], references: [id], onDelete: Cascade)
+  students   StudentClass[]
 
   @@unique([schoolId, teacherId, name, period])
   @@map("classes")
+}
+
+// A teacher/power-user-created ad hoc group of students (e.g. a small pull-out
+// group) not tied to any PowerSchool import. One Class row per co-teacher
+// shares the same classGroupId, name, and student roster — mirroring how
+// imported co-taught classes work (separate Class rows, same name/period) but
+// kept in sync explicitly since there's no import to regenerate them.
+model ClassGroup {
+  id               Int      @id @default(autoincrement())
+  schoolId         Int      @map("school_id")
+  name             String   @db.VarChar(200)
+  createdByStaffId Int      @map("created_by_staff_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  school    School  @relation(fields: [schoolId], references: [id])
+  createdBy Staff   @relation("ClassGroupCreator", fields: [createdByStaffId], references: [id])
+  classes   Class[]
+
+  @@index([schoolId])
+  @@map("class_groups")
 }
 
 model StudentClass {

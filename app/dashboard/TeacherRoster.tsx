@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { TEAM_COLORS } from "@/lib/leaderboard";
 import GoldenBulldogModal from "@/components/GoldenBulldogModal";
 
@@ -15,7 +16,7 @@ type Student = {
   totalPoints: number;
 };
 
-type RosterItem = { label: string; value: string; type: "class" | "homeroom" };
+type RosterItem = { label: string; value: string; type: "class" | "homeroom"; classGroupId?: number };
 type FeedbackState = { [studentId: number]: { type: "points" | "house"; value?: number } | null };
 
 const STORAGE_KEY = "teacher_roster_last_selected";
@@ -142,9 +143,16 @@ export default function TeacherRoster({ rosterItems }: { rosterItems: RosterItem
           </select>
         </div>
         {selected && (
-          <p className="text-xs text-gray-500">
-            Buttons 1–3 award personal points. <strong>House</strong> awards 5 pts to the student&apos;s house team only.
-          </p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-gray-500">
+              Buttons 1–3 award personal points. <strong>House</strong> awards 5 pts to the student&apos;s house team only.
+            </p>
+            {selected.classGroupId && (
+              <Link href={`/dashboard/classes/${selected.classGroupId}`} className="text-xs text-blue-600 hover:underline font-medium whitespace-nowrap">
+                Manage class →
+              </Link>
+            )}
+          </div>
         )}
       </div>
 

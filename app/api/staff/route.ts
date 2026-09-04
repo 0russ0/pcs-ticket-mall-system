@@ -4,8 +4,20 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "admin") {
+  if (!session?.user || !["admin", "teacher", "power_user"].includes(session.user.role ?? "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Non-admins only need this for picking a co-teacher on a custom class —
+  // scope the fields down to what a staff directory should reasonably show,
+  // rather than the full row (created timestamps etc).
+  if (session.user.role !== "admin") {
+    const staff = await prisma.staff.findMany({
+      where: { schoolId: session.user.schoolId! },
+      select: { id: true, firstName: true, lastName: true, googleEmail: true, role: true },
+      orderBy: { googleEmail: "asc" },
+    });
+    return NextResponse.json(staff);
   }
 
   const staff = await prisma.staff.findMany({
