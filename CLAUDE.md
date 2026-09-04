@@ -85,6 +85,19 @@ Bulldog both let any teacher target any student in the school directly. Bulk sta
 (e.g. from a Google Workspace group export) can create bare teacher accounts with just
 `googleEmail`/`firstName`/`lastName`/`role: "teacher"`; no roster wiring required.
 
+**Custom classes.** `ClassGroup` lets a teacher/power_user/admin create an ad hoc group of
+students (e.g. a small pull-out group) outside any PowerSchool import. It's deliberately just
+a thin wrapper: one `Class` row per co-teacher, all sharing `classGroupId` + `name` + roster —
+the exact same shape imported co-taught classes already use (separate `Class` rows, same
+name/period, one per teacher) — so it shows up in the normal class dropdown and Award Points
+flow with no changes to that code path. Managing it (rename, add/remove students, add/remove
+co-teachers, delete) goes through `PATCH`/`DELETE /api/classes/custom/[groupId]`, which keep
+every co-teacher's `Class` row in sync; permission is centralized in
+`lib/classGroupPermissions.ts` (admin, or any current co-teacher — same pattern as
+`lib/campaignPermissions.ts`). `GET /api/staff` was loosened from admin-only to any staff
+role (fields scoped to id/name/email/role) so a teacher can search for a colleague to add as
+a co-teacher; `POST /api/staff` (creating new staff) is still admin-only.
+
 **Campaigns ("Challenges").** `Campaign` + `CampaignAward` (one row per student per award —
 no group-level table). Only `admin`/`power_user` can create one (`POST /api/campaigns`);
 power-user-created campaigns are forced house-scoped (`audienceFilter.type === "houses"`) and
