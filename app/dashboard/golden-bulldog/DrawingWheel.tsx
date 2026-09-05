@@ -225,10 +225,13 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
     setWinner(null);
 
     const extra = Math.random() * 2 * Math.PI;
-    const totalSpin = 20 * 2 * Math.PI + extra; // plenty of rotations
-    const fullSpeedMs = 8000;  // spin at full speed for 8 seconds
-    const slowdownMs = 7000;   // then decelerate over 7 seconds
-    const duration = fullSpeedMs + slowdownMs; // 15 seconds total
+    // Fewer full rotations than before (10 vs 20) so the fast phase reads as
+    // genuinely slower, not just shorter — packing the old rotation count into
+    // a shorter window would have spun faster, the opposite of what's wanted.
+    const totalSpin = 10 * 2 * Math.PI + extra;
+    const fullSpeedMs = 4000;  // spin at full speed for 4 seconds
+    const slowdownMs = 6000;   // then decelerate over 6 seconds
+    const duration = fullSpeedMs + slowdownMs; // 10 seconds total
     const startTime = performance.now();
     const startRot = rotationRef.current;
 
@@ -245,9 +248,11 @@ export default function DrawingWheel({ entries, periodLabel, onClose }: Props) {
         // Linear — full speed
         eased = (elapsed / duration);
       } else {
-        // Ease out quart over the slowdown portion
+        // Ease out over the slowdown portion — a higher exponent than before
+        // (5 vs 4) stretches out the last bit into a longer, more visible
+        // creep toward the winning segment.
         const slowT = (elapsed - fullSpeedMs) / slowdownMs;
-        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 4);
+        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 5);
         eased = fullSpeedMs / duration + (slowdownAngle / totalSpin) * slowEased;
       }
 

@@ -208,10 +208,13 @@ export default function HouseWheel({ points, onWinner, onClose }: Props) {
     setAwarded(false);
 
     const extra = Math.random() * 2 * Math.PI;
-    const totalSpin = 20 * 2 * Math.PI + extra;
-    const fullSpeedMs = 6000;
-    const slowdownMs = 5000;
-    const duration = fullSpeedMs + slowdownMs;
+    // Fewer full rotations than before (10 vs 20) so the fast phase reads as
+    // genuinely slower, not just shorter — packing the old rotation count into
+    // a shorter window would have spun faster, the opposite of what's wanted.
+    const totalSpin = 10 * 2 * Math.PI + extra;
+    const fullSpeedMs = 4000;
+    const slowdownMs = 6000;
+    const duration = fullSpeedMs + slowdownMs; // 10s total
     const startTime = performance.now();
     const startRot = rotationRef.current;
 
@@ -227,7 +230,10 @@ export default function HouseWheel({ points, onWinner, onClose }: Props) {
         eased = elapsed / duration;
       } else {
         const slowT = (elapsed - fullSpeedMs) / slowdownMs;
-        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 4);
+        // Higher exponent than before (5 vs 4) so the last stretch is a longer,
+        // more visible creep toward the winning segment instead of stopping
+        // relatively briskly.
+        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 5);
         eased = fullSpeedMs / duration + (slowdownAngle / totalSpin) * slowEased;
       }
 
