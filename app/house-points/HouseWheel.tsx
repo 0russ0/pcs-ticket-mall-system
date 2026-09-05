@@ -208,34 +208,22 @@ export default function HouseWheel({ points, onWinner, onClose }: Props) {
     setAwarded(false);
 
     const extra = Math.random() * 2 * Math.PI;
-    // Fewer full rotations than before (10 vs 20) so the fast phase reads as
-    // genuinely slower, not just shorter — packing the old rotation count into
-    // a shorter window would have spun faster, the opposite of what's wanted.
-    const totalSpin = 10 * 2 * Math.PI + extra;
-    const fullSpeedMs = 4000;
-    const slowdownMs = 6000;
-    const duration = fullSpeedMs + slowdownMs; // 10s total
+    const totalSpin = 8 * 2 * Math.PI + extra;
+    const duration = 10000; // 10s total
     const startTime = performance.now();
     const startRot = rotationRef.current;
 
-    const fullSpeedAngle = totalSpin * (fullSpeedMs / duration);
-    const slowdownAngle = totalSpin - fullSpeedAngle;
-
+    // A single continuous ease-out for the whole spin — fastest the instant it
+    // starts (~3.2 rotations/sec), decelerating the entire way with no
+    // separate "cruise" phase. The earlier two-phase version (constant speed,
+    // then a separate decelerate-from-zero curve) had a velocity
+    // discontinuity right at the phase boundary — a sudden speed jump before
+    // easing down — which read as "slow, then fast, then slow." One curve
+    // can't have that seam.
     function animate(now: number) {
       const elapsed = now - startTime;
       const t = Math.min(elapsed / duration, 1);
-
-      let eased: number;
-      if (elapsed <= fullSpeedMs) {
-        eased = elapsed / duration;
-      } else {
-        const slowT = (elapsed - fullSpeedMs) / slowdownMs;
-        // Higher exponent than before (5 vs 4) so the last stretch is a longer,
-        // more visible creep toward the winning segment instead of stopping
-        // relatively briskly.
-        const slowEased = 1 - Math.pow(1 - Math.min(slowT, 1), 5);
-        eased = fullSpeedMs / duration + (slowdownAngle / totalSpin) * slowEased;
-      }
+      const eased = 1 - Math.pow(1 - t, 4);
 
       rotationRef.current = startRot + totalSpin * eased;
       drawWheel(rotationRef.current);
